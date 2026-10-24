@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Shop Management System - MEVA Rajshahi Zone</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen">
+
+    <div class="flex h-screen overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-slate-900 text-white flex flex-col justify-between shrink-0">
+            <div>
+                <div class="p-5 border-b border-slate-800 flex items-center space-x-3">
+                    <div class="bg-blue-600 p-2 rounded-lg">
+                        <i data-lucide="smartphone" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-lg leading-tight">MEVA Rajshahi Zone</h1>
+                        <p class="text-xs text-slate-400">POS & Inventory System</p>
+                    </div>
+                </div>
+
+                <nav class="p-4 space-y-2">
+                    <button onclick="switchTab('dashboard')" id="nav-dashboard" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 text-white transition-all">
+                        <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="switchTab('pos')" id="nav-pos" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-slate-800 text-slate-300 transition-all">
+                        <i data-lucide="shopping-cart" class="w-5 h-5"></i>
+                        <span>POS / Sales</span>
+                    </button>
+                    <button onclick="switchTab('inventory')" id="nav-inventory" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-slate-800 text-slate-300 transition-all">
+                        <i data-lucide="boxes" class="w-5 h-5"></i>
+                        <span>Inventory (44 Items)</span>
+                    </button>
+                    <button onclick="switchTab('shops')" id="nav-shops" class="w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-slate-800 text-slate-300 transition-all">
+                        <i data-lucide="store" class="w-5 h-5"></i>
+                        <span>Shops / Outlets</span>
+                    </button>
+                </nav>
+            </div>
+
+            <div class="p-4 border-t border-slate-800 text-xs text-slate-400 text-center">
+                MEVA Rajshahi Zone &copy; 2026
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col overflow-y-auto">
+            
+            <!-- Top Navbar -->
+            <header class="bg-white border-b border-slate-200 px-8 py-4 flex justify-between items-center sticky top-0 z-10">
+                <div class="flex items-center space-x-4">
+                    <span class="text-sm text-slate-500">Active Shop:</span>
+                    <select id="activeShopSelect" onchange="changeActiveShop()" class="bg-slate-50 border border-slate-300 rounded-lg px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-blue-500">
+                        <!-- Populated by JS -->
+                    </select>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
+                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> System Live
+                    </span>
+                </div>
+            </header>
+
+            <div class="p-8 flex-1">
+
+                <!-- 1. DASHBOARD TAB -->
+                <div id="tab-dashboard" class="space-y-6">
+                    <h2 class="text-2xl font-bold text-slate-800">Dashboard Overview</h2>
+                    
+                    <!-- Stats Cards -->
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex justify-between items-center text-slate-500 mb-2">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Total Sales</span>
+                                <i data-lucide="banknote" class="w-5 h-5 text-emerald-600"></i>
+                            </div>
+                            <h3 id="statTotalSales" class="text-2xl font-extrabold text-slate-900">৳0</h3>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex justify-between items-center text-slate-500 mb-2">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Total Orders</span>
+                                <i data-lucide="receipt" class="w-5 h-5 text-blue-600"></i>
+                            </div>
+                            <h3 id="statTotalOrders" class="text-2xl font-extrabold text-slate-900">0</h3>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex justify-between items-center text-slate-500 mb-2">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Stock Items</span>
+                                <i data-lucide="package" class="w-5 h-5 text-indigo-600"></i>
+                            </div>
+                            <h3 id="statTotalStock" class="text-2xl font-extrabold text-slate-900">0</h3>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            <div class="flex justify-between items-center text-slate-500 mb-2">
+                                <span class="text-xs font-semibold uppercase tracking-wider">Low Stock Alert</span>
+                                <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600"></i>
+                            </div>
+                            <h3 id="statLowStock" class="text-2xl font-extrabold text-slate-900">0</h3>
+                        </div>
+                    </div>
+
+                    <!-- Recent Orders Table -->
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-5 border-b border-slate-100 flex justify-between items-center">
+                            <h3 class="font-bold text-slate-800">Recent Sales Activity</h3>
+                            <button onclick="switchTab('pos')" class="text-xs font-semibold text-blue-600 hover:text-blue-800">Go to POS &rarr;</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+                                    <tr>
+                                        <th class="p-4">Order ID</th>
+                                        <th class="p-4">Customer</th>
+                                        <th class="p-4">Payment Method</th>
+                                        <th class="p-4">Total Amount</th>
+                                        <th class="p-4">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recentSalesTable" class="divide-y divide-slate-100">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. POS / SALES TAB -->
+                <div id="tab-pos" class="hidden grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Left: Products Catalog for POS -->
+                    <div class="lg:col-span-2 space-y-4">
+                        <div class="flex justify-between items-center">
+                            <h2 class="text-2xl font-bold text-slate-800">Point of Sale (POS)</h2>
+                            <div class="w-64">
+                                <input type="text" id="posSearch" oninput="renderPOSProducts()" placeholder="Search product name..." class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div id="posProductsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-[calc(100vh-220px)] overflow-y-auto pr-2">
+                            <!-- Dynamic Cards -->
+                        </div>
+                    </div>
+
+                    <!-- Right: Cart / Checkout -->
+                    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between">
+                        <div>
+                            <h3 class="text-lg font-bold border-b border-slate-100 pb-3 mb-4 flex justify-between items-center">
+                                <span>Current Cart</span>
+                                <span id="cartItemCount" class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full">0 Items</span>
+                            </h3>
+
+                            <div class="space-y-3 mb-4">
+                                <input type="text" id="custName" placeholder="Customer Name" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                                <input type="text" id="custPhone" placeholder="Customer Phone" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                            </div>
+
+                            <!-- Cart Items List -->
+                            <div id="cartItemsList" class="space-y-3 max-h-60 overflow-y-auto pr-1 mb-4 border-b border-slate-100 pb-4">
+                                <p class="text-sm text-slate-400 text-center py-6">Cart is empty</p>
+                            </div>
+                        </div>
+
+                        <div class="space-y-3 border-t border-slate-100 pt-4">
+                            <div class="flex justify-between text-sm">
+                                <span class="text-slate-500">Subtotal:</span>
+                                <span id="cartSubtotal" class="font-bold">৳0</span>
+                            </div>
+                            <div class="flex justify-between text-sm items-center">
+                                <span class="text-slate-500">Discount (৳):</span>
+                                <input type="number" id="cartDiscount" value="0" min="0" oninput="updateCartTotals()" class="w-20 border border-slate-300 rounded px-2 py-1 text-right text-sm">
+                            </div>
+                            <div class="flex justify-between text-base font-extrabold text-slate-900 border-t border-slate-100 pt-2">
+                                <span>Grand Total:</span>
+                                <span id="cartGrandTotal" class="text-blue-600">৳0</span>
+                            </div>
+
+                            <div class="pt-2">
+                                <label class="text-xs font-semibold text-slate-500 mb-1 block">Payment Method</label>
+                                <select id="paymentMethod" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm font-medium">
+                                    <option value="Cash">Cash</option>
+                                    <option value="bKash">bKash</option>
+                                    <option value="Nagad">Nagad</option>
+                                    <option value="Card">Card / POS</option>
+                                </select>
+                            </div>
+
+                            <button onclick="completeSale()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition-all shadow-md mt-4 flex justify-center items-center gap-2">
+                                <i data-lucide="check-circle" class="w-5 h-5"></i> Complete Sale & Print
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. INVENTORY TAB -->
+                <div id="tab-inventory" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 class="text-2xl font-bold text-slate-800">Inventory Management</h2>
+                            <p class="text-xs text-slate-500">MEVA Rajshahi Zone Price List Products</p>
+                        </div>
+                        <button onclick="openAddProductModal()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Add New Product
+                        </button>
+                    </div>
+
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+                        <div class="p-4 border-b border-slate-100 flex gap-4">
+                            <input type="text" id="invSearch" oninput="renderInventoryTable()" placeholder="Search product name or brand..." class="flex-1 border border-slate-300 rounded-lg px-3 py-2 text-sm">
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left text-sm">
+                                <thead class="bg-slate-50 text-slate-500 uppercase text-xs">
+                                    <tr>
+                                        <th class="p-4">SL</th>
+                                        <th class="p-4">Item Description</th>
+                                        <th class="p-4">Brand</th>
+                                        <th class="p-4">Dealer Price</th>
+                                        <th class="p-4">Retail Price</th>
+                                        <th class="p-4">MRP</th>
+                                        <th class="p-4">Stock</th>
+                                        <th class="p-4 text-right">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="inventoryTableBody" class="divide-y divide-slate-100">
+                                    <!-- Dynamic -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. SHOPS TAB -->
+                <div id="tab-shops" class="hidden space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h2 class="text-2xl font-bold text-slate-800">Shops & Outlets</h2>
+                        <button onclick="addNewShop()" class="bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold px-4 py-2 rounded-lg flex items-center gap-2 shadow-sm">
+                            <i data-lucide="plus" class="w-4 h-4"></i> Add Outlet
+                        </button>
+                    </div>
+                    <div id="shopsGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Dynamic -->
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- INVOICE MODAL -->
+    <div id="invoiceModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
+            <div class="text-center border-b pb-4">
+                <h3 class="text-xl font-bold text-slate-900">MEVA Rajshahi Zone</h3>
+                <p class="text-xs text-slate-500">Mirpur, Pallabi, Dhaka 1216 | Hotline: 09613001409</p>
+                <div class="mt-2 inline-block bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-mono" id="invNo">#INV-0000</div>
+            </div>
+
+            <div class="text-xs space-y-1 text-slate-600">
+                <p><strong>Customer:</strong> <span id="invCustName">--</span></p>
+                <p><strong>Phone:</strong> <span id="invCustPhone">--</span></p>
+                <p><strong>Date:</strong> <span id="invDate">--</span></p>
+                <p><strong>Payment Method:</strong> <span id="invPayMethod">--</span></p>
+            </div>
+
+            <table class="w-full text-xs text-left">
+                <thead class="border-b bg-slate-50">
+                    <tr>
+                        <th class="py-2">Item</th>
+                        <th class="py-2 text-center">Qty</th>
+                        <th class="py-2 text-right">Price</th>
+                    </tr>
+                </thead>
+                <tbody id="invItemsTable" class="divide-y">
+                    <!-- Dynamic -->
+                </tbody>
+            </table>
+
+            <div class="border-t pt-2 text-xs space-y-1 text-slate-700">
+                <div class="flex justify-between"><span>Subtotal:</span><span id="invSubtotal">৳0</span></div>
+                <div class="flex justify-between"><span>Discount:</span><span id="invDiscount">৳0</span></div>
+                <div class="flex justify-between font-bold text-sm text-slate-900 border-t pt-1"><span>Total:</span><span id="invTotal">৳0</span></div>
+            </div>
+
+            <div class="flex gap-2 pt-4">
+                <button onclick="window.print()" class="flex-1 bg-blue-600 text-white text-xs font-bold py-2.5 rounded-lg hover:bg-blue-700">Print Receipt</button>
+                <button onclick="closeModal('invoiceModal')" class="flex-1 bg-slate-200 text-slate-800 text-xs font-bold py-2.5 rounded-lg hover:bg-slate-300">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- INITIAL CATALOG DATA & APPLICATION SCRIPT -->
+    <script>
+        // MEVA Rajshahi Zone Price List Data (44 Products)
+        const initialProducts = [
+            { id: 1, name: "Meva fast charger M10/14W/1USB (MICRO) [6-Month Guarantee]", brand: "Meva", dealer_price: 160, retail_price: 210, mrp: 260, stock: 30 },
+            { id: 2, name: "Meva fast charger M20/18W (MICRO) [6-Month Guarantee]", brand: "Meva", dealer_price: 220, retail_price: 265, mrp: 345, stock: 25 },
+            { id: 3, name: "Meva fast charger M20/18W (TYPE C) [6-Month Guarantee]", brand: "Meva", dealer_price: 230, retail_price: 275, mrp: 355, stock: 20 },
+            { id: 4, name: "Meva fast charger M30/24W (MICRO) [6-Month Guarantee]", brand: "Meva", dealer_price: 250, retail_price: 290, mrp: 350, stock: 15 },
+            { id: 5, name: "Meva fast charger M30/24W (TYPE C) [6-Month Guarantee]", brand: "Meva", dealer_price: 260, retail_price: 300, mrp: 370, stock: 18 },
+            { id: 6, name: "Meva fast charger M30/24W (i-Phone) [6-Month Guarantee]", brand: "Meva", dealer_price: 270, retail_price: 280, mrp: 370, stock: 12 },
+            { id: 7, name: "Meva fast charger M50/33W (MICRO) [6-Month Guarantee]", brand: "Meva", dealer_price: 280, retail_price: 320, mrp: 420, stock: 10 },
+            { id: 8, name: "Meva fast charger M50/33W (TYPE C) [6-Month Guarantee]", brand: "Meva", dealer_price: 290, retail_price: 330, mrp: 430, stock: 14 },
+            { id: 9, name: "Meva fast charger M50/33W (i-Phone) [6-Month Guarantee]", brand: "Meva", dealer_price: 370, retail_price: 450, mrp: 550, stock: 8 },
+            { id: 10, name: "Meva fast charger M60/45W (TYPE C) [6-Month Guarantee]", brand: "Meva", dealer_price: 410, retail_price: 500, mrp: 620, stock: 10 },
+            { id: 11, name: "Meva fast charger M60/45W (i-Phone) [6-Month Guarantee]", brand: "Meva", dealer_price: 420, retail_price: 510, mrp: 650, stock: 6 },
+            { id: 12, name: "Meva Feature Phone Charger E07 (MICRO) [6-Month Guarantee]", brand: "Meva", dealer_price: 65, retail_price: 72, mrp: 100, stock: 50 },
+            { id: 13, name: "Meva Cable Premium/MV02 (MICRO)", brand: "Meva", dealer_price: 55, retail_price: 65, mrp: 100, stock: 40 },
+            { id: 14, name: "Meva Cable Premium/MV02 (TYPE C)", brand: "Meva", dealer_price: 60, retail_price: 69, mrp: 120, stock: 35 },
+            { id: 15, name: "Meva Battery 5C -800mAh", brand: "Meva", dealer_price: 100, retail_price: 120, mrp: 140, stock: 20 },
+            { id: 16, name: "Meva Battery 5C -1000mAh", brand: "Meva", dealer_price: 120, retail_price: 140, mrp: 250, stock: 20 },
+            { id: 17, name: "Meva Usb Data Cable V01 (Silicon) Type- C", brand: "Meva", dealer_price: 60, retail_price: 70, mrp: 120, stock: 30 },
+            { id: 18, name: "Meva Usb Data Cable V01 (Silicon) Type- B", brand: "Meva", dealer_price: 55, retail_price: 65, mrp: 100, stock: 30 },
+            { id: 19, name: "Meva Usb Data Cable V01 (Silicon) iphone", brand: "Meva", dealer_price: 65, retail_price: 75, mrp: 150, stock: 25 },
+            { id: 20, name: "L23i/25i", brand: "Meva", dealer_price: 150, retail_price: 170, mrp: 250, stock: 15 },
+            { id: 21, name: "Meva fast charger M20/18W (iphone) [6-Month Guarantee]", brand: "Meva", dealer_price: 240, retail_price: 285, mrp: 365, stock: 12 },
+            { id: 22, name: "Meva Feature Phone Charger E07 (TYPE-C) [6-Month Guarantee]", brand: "Meva", dealer_price: 68, retail_price: 75, mrp: 100, stock: 40 },
+            { id: 23, name: "Meva fast charger M10/14W/1USB (Type C) [6-Month Guarantee]", brand: "Meva", dealer_price: 170, retail_price: 220, mrp: 270, stock: 20 },
+            { id: 24, name: "Meva Earphone ME50", brand: "Meva", dealer_price: 105, retail_price: 125, mrp: 160, stock: 30 },
+            { id: 25, name: "Meva Fast Charging Data Cable (Silicon) V02-B [6-Month Guarantee]", brand: "Meva", dealer_price: 85, retail_price: 105, mrp: 140, stock: 25 },
+            { id: 26, name: "Meva Fast Charging Data Cable (Silicon) V02-C [6-Month Guarantee]", brand: "Meva", dealer_price: 95, retail_price: 115, mrp: 150, stock: 25 },
+            { id: 27, name: "Meva USB Data Cable (Woven) AR40-B [3-Month Guarantee]", brand: "Meva", dealer_price: 130, retail_price: 155, mrp: 190, stock: 20 },
+            { id: 28, name: "Meva USB Data Cable (Woven) AR40-C [3-Month Guarantee]", brand: "Meva", dealer_price: 140, retail_price: 165, mrp: 200, stock: 20 },
+            { id: 29, name: "Meva USB Data Cable (Fast Charging) AR20-B [3-Month Guarantee]", brand: "Meva", dealer_price: 130, retail_price: 155, mrp: 190, stock: 18 },
+            { id: 30, name: "Meva USB Data Cable (Fast Charging) AR20-C [3-Month Guarantee]", brand: "Meva", dealer_price: 140, retail_price: 165, mrp: 200, stock: 18 },
+            { id: 31, name: "Meva USB Data Cable (Flat) AR30-B [3-Month Guarantee]", brand: "Meva", dealer_price: 110, retail_price: 132, mrp: 172, stock: 15 },
+            { id: 32, name: "Meva USB Data Cable (Flat) AR30-C [3-Month Guarantee]", brand: "Meva", dealer_price: 125, retail_price: 150, mrp: 195, stock: 15 },
+            { id: 33, name: "Meva USB Data Cable (Silicon) AR50-B [3-Month Guarantee]", brand: "Meva", dealer_price: 110, retail_price: 132, mrp: 172, stock: 22 },
+            { id: 34, name: "Meva USB Data Cable (Silicon) AR50-C [3-Month Guarantee]", brand: "Meva", dealer_price: 120, retail_price: 145, mrp: 190, stock: 22 },
+            { id: 35, name: "Meva USB Data Cable (Best) AR10-B [3-Month Guarantee]", brand: "Meva", dealer_price: 120, retail_price: 145, mrp: 190, stock: 20 },
+            { id: 36, name: "Meva USB Data Cable (Best) AR10-C [3-Month Guarantee]", brand: "Meva", dealer_price: 130, retail_price: 155, mrp: 200, stock: 20 },
+            { id: 37, name: "Meva R100 Airpods", brand: "Meva", dealer_price: 830, retail_price: 995, mrp: 1295, stock: 10 },
+            { id: 38, name: "Meva Button Phone Charger (China Body) E07 [6-Month Guarantee]", brand: "Meva", dealer_price: 70, retail_price: 75, mrp: 100, stock: 40 },
+            { id: 39, name: "25B1 itel Original Battery", brand: "itel", dealer_price: 150, retail_price: 180, mrp: 250, stock: 15 },
+            { id: 40, name: "X200 Samsung Original Battery", brand: "Samsung", dealer_price: 150, retail_price: 180, mrp: 250, stock: 15 },
+            { id: 41, name: "4C Nokia Original Battery", brand: "Nokia", dealer_price: 100, retail_price: 130, mrp: 180, stock: 25 },
+            { id: 42, name: "E06 Button Phone Charger - B", brand: "Meva", dealer_price: 70, retail_price: 80, mrp: 100, stock: 30 },
+            { id: 43, name: "E06 Button Phone Charger - C", brand: "Meva", dealer_price: 72, retail_price: 82, mrp: 110, stock: 30 },
+            { id: 44, name: "V01 Silicon Usb Cable - iphone", brand: "Meva", dealer_price: 65, retail_price: 75, mrp: 120, stock: 25 }
+        ];
+
+        // State Management
+        let shops = JSON.parse(localStorage.getItem('amg_shops')) || [
+            { id: 1, name: "MEVA Rajshahi Zone (Main Branch)", address: "Pallabi, Mirpur, Dhaka" },
+            { id: 2, name: "MEVA Rajshahi Zone Outlet - 2", address: "Section-6, Mirpur" }
+        ];
+
+        let products = JSON.parse(localStorage.getItem('amg_products')) || initialProducts;
+        let orders = JSON.parse(localStorage.getItem('amg_orders')) || [];
+        let cart = [];
+        let activeShopId = 1;
+
+        // Initialize App
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            renderShopsSelect();
+            renderDashboard();
+            renderPOSProducts();
+            renderInventoryTable();
+            renderShopsList();
+        });
+
+        // Tab Switching
+        function switchTab(tabName) {
+            ['dashboard', 'pos', 'inventory', 'shops'].forEach(tab => {
+                document.getElementById(`tab-${tab}`).classList.add('hidden');
+                document.getElementById(`nav-${tab}`).className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium hover:bg-slate-800 text-slate-300 transition-all";
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`nav-${tabName}`).className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 text-white transition-all";
+        }
+
+        // Shop Selection
+        function renderShopsSelect() {
+            const select = document.getElementById('activeShopSelect');
+            select.innerHTML = shops.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        }
+
+        function changeActiveShop() {
+            activeShopId = parseInt(document.getElementById('activeShopSelect').value);
+        }
+
+        // Render Dashboard Stats
+        function renderDashboard() {
+            const totalSalesSum = orders.reduce((acc, o) => acc + o.total, 0);
+            const totalStockSum = products.reduce((acc, p) => acc + p.stock, 0);
+            const lowStockCount = products.filter(p => p.stock < 10).length;
+
+            document.getElementById('statTotalSales').innerText = `৳${totalSalesSum.toLocaleString()}`;
+            document.getElementById('statTotalOrders').innerText = orders.length;
+            document.getElementById('statTotalStock').innerText = totalStockSum;
+            document.getElementById('statLowStock').innerText = lowStockCount;
+
+            const recentTable = document.getElementById('recentSalesTable');
+            if (orders.length === 0) {
+                recentTable.innerHTML = `<tr><td colspan="5" class="p-4 text-center text-slate-400">No sales recorded yet</td></tr>`;
+            } else {
+                recentTable.innerHTML = orders.slice().reverse().slice(0, 5).map(o => `
+                    <tr class="hover:bg-slate-50">
+                        <td class="p-4 font-mono font-bold text-blue-600">#${o.id}</td>
+                        <td class="p-4">${o.customerName || 'Walk-in Customer'}</td>
+                        <td class="p-4"><span class="bg-slate-100 text-slate-700 text-xs px-2 py-1 rounded">${o.paymentMethod}</span></td>
+                        <td class="p-4 font-bold">৳${o.total}</td>
+                        <td class="p-4 text-xs text-slate-400">${o.date}</td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        // POS Product Grid
+        function renderPOSProducts() {
+            const query = document.getElementById('posSearch').value.toLowerCase();
+            const grid = document.getElementById('posProductsGrid');
+
+            const filtered = products.filter(p => p.name.toLowerCase().includes(query) || p.brand.toLowerCase().includes(query));
+
+            grid.innerHTML = filtered.map(p => `
+                <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col justify-between hover:border-blue-400 transition-all">
+                    <div>
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-semibold">${p.brand}</span>
+                            <span class="text-xs ${p.stock < 10 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'} px-2 py-0.5 rounded-full">Stock: ${p.stock}</span>
+                        </div>
+                        <h4 class="font-bold text-slate-800 text-sm leading-snug mb-2">${p.name}</h4>
+                    </div>
+                    <div class="flex justify-between items-center mt-3 pt-2 border-t border-slate-100">
+                        <div>
+                            <span class="text-xs text-slate-400 block">Retail Price</span>
+                            <span class="text-lg font-extrabold text-blue-600">৳${p.retail_price}</span>
+                        </div>
+                        <button onclick="addToCart(${p.id})" ${p.stock <= 0 ? 'disabled' : ''} class="bg-blue-600 hover:bg-blue-700 disabled:bg-slate-300 text-white text-xs font-bold px-3 py-2 rounded-lg flex items-center gap-1 shadow-sm">
+                            <i data-lucide="plus" class="w-3.5 h-3.5"></i> Add
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        // Cart Actions
+        function addToCart(productId) {
+            const product = products.find(p => p.id === productId);
+            if (!product || product.stock <= 0) return;
+
+            const existing = cart.find(c => c.id === productId);
+            if (existing) {
+                if (existing.qty < product.stock) {
+                    existing.qty++;
+                } else {
+                    alert("Cannot add more than available stock!");
+                }
+            } else {
+                cart.push({ ...product, qty: 1 });
+            }
+            renderCart();
+        }
+
+        function updateCartQty(productId, qty) {
+            const item = cart.find(c => c.id === productId);
+            const product = products.find(p => p.id === productId);
+            if (item && product) {
+                if (qty <= 0) {
+                    cart = cart.filter(c => c.id !== productId);
+                } else if (qty <= product.stock) {
+                    item.qty = qty;
+                } else {
+                    alert("Exceeds available stock!");
+                }
+            }
+            renderCart();
+        }
+
+        function renderCart() {
+            const list = document.getElementById('cartItemsList');
+            document.getElementById('cartItemCount').innerText = `${cart.length} Items`;
+
+            if (cart.length === 0) {
+                list.innerHTML = `<p class="text-sm text-slate-400 text-center py-6">Cart is empty</p>`;
+            } else {
+                list.innerHTML = cart.map(c => `
+                    <div class="flex items-center justify-between bg-slate-50 p-2.5 rounded-lg border border-slate-100 text-sm">
+                        <div class="flex-1 pr-2">
+                            <h5 class="font-bold text-slate-800 text-xs truncate">${c.name}</h5>
+                            <span class="text-xs text-blue-600 font-semibold">৳${c.retail_price} x ${c.qty}</span>
+                        </div>
+                        <div class="flex items-center space-x-1">
+                            <button onclick="updateCartQty(${c.id}, ${c.qty - 1})" class="w-6 h-6 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-slate-100">-</button>
+                            <span class="text-xs font-bold w-5 text-center">${c.qty}</span>
+                            <button onclick="updateCartQty(${c.id}, ${c.qty + 1})" class="w-6 h-6 bg-white border border-slate-200 rounded text-xs font-bold hover:bg-slate-100">+</button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            updateCartTotals();
+        }
+
+        function updateCartTotals() {
+            const subtotal = cart.reduce((acc, c) => acc + (c.retail_price * c.qty), 0);
+            const discount = parseFloat(document.getElementById('cartDiscount').value) || 0;
+            const grandTotal = Math.max(0, subtotal - discount);
+
+            document.getElementById('cartSubtotal').innerText = `৳${subtotal}`;
+            document.getElementById('cartGrandTotal').innerText = `৳${grandTotal}`;
+        }
+
+        // Complete Sale & Auto Deduct Inventory Stock
+        function completeSale() {
+            if (cart.length === 0) {
+                alert("Cart is empty!");
+                return;
+            }
+
+            const custName = document.getElementById('custName').value.trim() || 'Walk-in Customer';
+            const custPhone = document.getElementById('custPhone').value.trim() || 'N/A';
+            const paymentMethod = document.getElementById('paymentMethod').value;
+            const subtotal = cart.reduce((acc, c) => acc + (c.retail_price * c.qty), 0);
+            const discount = parseFloat(document.getElementById('cartDiscount').value) || 0;
+            const grandTotal = Math.max(0, subtotal - discount);
+            const orderId = "INV-" + Math.floor(1000 + Math.random() * 9000);
+            const dateStr = new Date().toLocaleString();
+
+            // 1. Auto Deduct Inventory Stock
+            cart.forEach(item => {
+                const prod = products.find(p => p.id === item.id);
+                if (prod) {
+                    prod.stock -= item.qty;
+                }
+            });
+
+            // 2. Record Order
+            const newOrder = {
+                id: orderId,
+                customerName: custName,
+                customerPhone: custPhone,
+                items: [...cart],
+                subtotal: subtotal,
+                discount: discount,
+                total: grandTotal,
+                paymentMethod: paymentMethod,
+                date: dateStr
+            };
+            orders.push(newOrder);
+
+            // Save Persistence
+            localStorage.setItem('amg_products', JSON.stringify(products));
+            localStorage.setItem('amg_orders', JSON.stringify(orders));
+
+            // Show Printable Invoice
+            showInvoiceModal(newOrder);
+
+            // Reset Form & UI
+            cart = [];
+            document.getElementById('custName').value = '';
+            document.getElementById('custPhone').value = '';
+            document.getElementById('cartDiscount').value = '0';
+            renderCart();
+            renderPOSProducts();
+            renderInventoryTable();
+            renderDashboard();
+        }
+
+        function showInvoiceModal(order) {
+            document.getElementById('invNo').innerText = `#${order.id}`;
+            document.getElementById('invCustName').innerText = order.customerName;
+            document.getElementById('invCustPhone').innerText = order.customerPhone;
+            document.getElementById('invDate').innerText = order.date;
+            document.getElementById('invPayMethod').innerText = order.paymentMethod;
+
+            document.getElementById('invSubtotal').innerText = `৳${order.subtotal}`;
+            document.getElementById('invDiscount').innerText = `৳${order.discount}`;
+            document.getElementById('invTotal').innerText = `৳${order.total}`;
+
+            const table = document.getElementById('invItemsTable');
+            table.innerHTML = order.items.map(i => `
+                <tr>
+                    <td class="py-2">${i.name}</td>
+                    <td class="py-2 text-center">${i.qty}</td>
+                    <td class="py-2 text-right">৳${i.retail_price * i.qty}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('invoiceModal').classList.remove('hidden');
+            document.getElementById('invoiceModal').classList.add('flex');
+        }
+
+        function closeModal(id) {
+            document.getElementById(id).classList.add('hidden');
+            document.getElementById(id).classList.remove('flex');
+        }
+
+        // Render Inventory Table
+        function renderInventoryTable() {
+            const query = document.getElementById('invSearch').value.toLowerCase();
+            const tbody = document.getElementById('inventoryTableBody');
+
+            const filtered = products.filter(p => p.name.toLowerCase().includes(query) || p.brand.toLowerCase().includes(query));
+
+            tbody.innerHTML = filtered.map((p, idx) => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-4 text-xs font-bold text-slate-400">${idx + 1}</td>
+                    <td class="p-4 font-semibold text-slate-800">${p.name}</td>
+                    <td class="p-4"><span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-medium">${p.brand}</span></td>
+                    <td class="p-4 font-mono text-slate-600">৳${p.dealer_price}</td>
+                    <td class="p-4 font-mono font-bold text-blue-600">৳${p.retail_price}</td>
+                    <td class="p-4 font-mono text-slate-500">৳${p.mrp}</td>
+                    <td class="p-4">
+                        <span class="px-2.5 py-1 rounded-full text-xs font-bold ${p.stock < 10 ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'}">
+                            ${p.stock} pcs
+                        </span>
+                    </td>
+                    <td class="p-4 text-right">
+                        <button onclick="addStockPrompt(${p.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded">
+                            + Restock
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function addStockPrompt(id) {
+            const qty = prompt("Enter stock quantity to add:");
+            if (qty && !isNaN(qty) && parseInt(qty) > 0) {
+                const prod = products.find(p => p.id === id);
+                if (prod) {
+                    prod.stock += parseInt(qty);
+                    localStorage.setItem('amg_products', JSON.stringify(products));
+                    renderInventoryTable();
+                    renderPOSProducts();
+                    renderDashboard();
+                }
+            }
+        }
+
+        function openAddProductModal() {
+            const name = prompt("Product Name:");
+            if (!name) return;
+            const brand = prompt("Brand:", "MEVA Rajshahi Zone") || "MEVA Rajshahi Zone";
+            const dealerPrice = parseFloat(prompt("Dealer Price (৳):", "100")) || 100;
+            const retailPrice = parseFloat(prompt("Retail Price (৳):", "150")) || 150;
+            const mrp = parseFloat(prompt("MRP (৳):", "200")) || 200;
+            const stock = parseInt(prompt("Initial Stock:", "20")) || 20;
+
+            const newProd = {
+                id: Date.now(),
+                name,
+                brand,
+                dealer_price: dealerPrice,
+                retail_price: retailPrice,
+                mrp,
+                stock
+            };
+
+            products.unshift(newProd);
+            localStorage.setItem('amg_products', JSON.stringify(products));
+            renderInventoryTable();
+            renderPOSProducts();
+            renderDashboard();
+        }
+
+        // Render Shops
+        function renderShopsList() {
+            const grid = document.getElementById('shopsGrid');
+            grid.innerHTML = shops.map(s => `
+                <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                    <div class="bg-blue-50 w-10 h-10 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+                        <i data-lucide="store" class="w-5 h-5"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 text-lg mb-1">${s.name}</h3>
+                    <p class="text-xs text-slate-500">${s.address}</p>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function addNewShop() {
+            const name = prompt("Shop Outlet Name:");
+            if (!name) return;
+            const address = prompt("Address:", "Mirpur, Dhaka") || "Mirpur, Dhaka";
+
+            shops.push({ id: Date.now(), name, address });
+            localStorage.setItem('amg_shops', JSON.stringify(shops));
+            renderShopsSelect();
+            renderShopsList();
+        }
+    </script>
+</body>
+</html>
