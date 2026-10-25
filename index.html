@@ -12,47 +12,71 @@
     <script src="firebase-config.js?v=2"></script>
 </head>
 <body class="auth-page min-h-screen bg-slate-100 text-slate-800">
-    <main class="auth-layout mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-10 lg:grid-cols-2 lg:px-10">
-        <section class="auth-intro">
-            <div class="auth-brand mb-8 inline-flex items-center gap-3">
-                <span class="auth-logo grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-xl font-bold text-white">M</span>
-                <span class="font-semibold text-slate-700">MEVA Rajshahi Zone</span>
-            </div>
-            <p class="auth-eyebrow mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-blue-700">POS & inventory</p>
-            <h1 class="auth-title max-w-xl text-4xl font-extrabold leading-tight text-slate-950 sm:text-5xl">আপনার ব্যবসা পরিচালনা করুন, এক জায়গায়।</h1>
-            <p class="mt-5 max-w-lg leading-7 text-slate-600">বিক্রয়, পণ্য, স্টক এবং আউটলেট পরিচালনার জন্য নিরাপদে সাইন ইন করুন। অনুমোদিত ব্যবহারকারীরা একই ডেটা শেয়ার করবেন।</p>
-            <div class="mt-8 grid max-w-lg gap-3 sm:grid-cols-3">
-                <div class="auth-feature rounded-xl border border-slate-200 bg-white p-4"><strong class="block text-slate-900">বিক্রয়</strong><span class="text-sm text-slate-500">POS ও রসিদ</span></div>
-                <div class="auth-feature rounded-xl border border-slate-200 bg-white p-4"><strong class="block text-slate-900">ইনভেন্টরি</strong><span class="text-sm text-slate-500">পণ্য ও স্টক</span></div>
-                <div class="auth-feature rounded-xl border border-slate-200 bg-white p-4"><strong class="block text-slate-900">আউটলেট</strong><span class="text-sm text-slate-500">শাখা পরিচালনা</span></div>
-            </div>
-        </section>
+    <main class="auth-shell">
+        <header class="auth-header">
+            <a class="auth-brand" href="./index.html" aria-label="MEVA Rajshahi Zone home">
+                <span class="auth-logo">M</span>
+                <span class="auth-brand-copy"><strong>MEVA</strong><span>RAJSHAHI ZONE</span></span>
+            </a>
+            <div class="auth-header-note"><span class="auth-status-dot"></span> Business management portal</div>
+        </header>
 
-        <section class="auth-card mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8">
-            <h2 class="text-2xl font-bold text-slate-950">সাইন ইন</h2>
-            <p class="mt-1 text-sm text-slate-500">আপনার account দিয়ে প্রবেশ করুন</p>
-            <button id="googleSignIn" type="button" class="auth-google mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
-                <span class="text-lg font-bold text-blue-600">G</span>
-                Google দিয়ে চালিয়ে যান
-            </button>
-            <div class="my-5 flex items-center gap-3 text-xs text-slate-400"><span class="h-px flex-1 bg-slate-200"></span>অথবা ইমেইল দিয়ে সাইন ইন<span class="h-px flex-1 bg-slate-200"></span></div>
-            <form id="emailSignInForm" class="space-y-4">
-                <label class="block text-sm font-medium text-slate-700">
-                    ইমেইল
-                    <input id="email" type="email" autocomplete="username" required class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                </label>
-                <label class="block text-sm font-medium text-slate-700">
-                    পাসওয়ার্ড
-                    <input id="password" type="password" autocomplete="current-password" required class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
-                </label>
-                <div class="text-right">
-                    <button id="forgotPassword" type="button" class="text-sm font-semibold text-blue-700 hover:text-blue-900">পাসওয়ার্ড ভুলে গেছেন?</button>
+        <div class="auth-layout">
+            <section class="auth-intro">
+                <div class="auth-eyebrow"><span></span> SMART RETAIL MANAGEMENT</div>
+                <h1 class="auth-title">আপনার ব্যবসার<br><span>সবকিছু এক জায়গায়।</span></h1>
+                <p class="auth-description">বিক্রয়, পণ্য, স্টক এবং আউটলেট পরিচালনা করুন আরও সহজে। আপনার টিমের জন্য তৈরি একটি নির্ভরযোগ্য ব্যবসা ব্যবস্থাপনা প্ল্যাটফর্ম।</p>
+
+                <div class="auth-preview" aria-label="Dashboard preview">
+                    <div class="auth-preview-top">
+                        <div>                        <span class="auth-preview-kicker">DASHBOARD PREVIEW · SAMPLE</span><strong>আজকের সারসংক্ষেপ</strong></div>
+                        <span class="auth-preview-period">আজ <span>⌄</span></span>
+                    </div>
+                    <div class="auth-preview-stats">
+                        <div class="auth-preview-stat"><span>মোট বিক্রয়</span><strong>৳ ২৪,৮৫০</strong><small><b>↗ ১২.৮%</b> গতকালের তুলনায়</small></div>
+                        <div class="auth-preview-stat"><span>আজকের অর্ডার</span><strong>৩৮</strong><small><b>↗ ৮.২%</b> গতকালের তুলনায়</small></div>
+                    </div>
+                    <div class="auth-preview-chart">
+                        <div class="auth-chart-label"><span>বিক্রয়ের প্রবণতা</span><span>সকাল <i></i> সন্ধ্যা</span></div>
+                        <div class="auth-chart-bars" aria-hidden="true">
+                            <span style="--bar:32%"></span><span style="--bar:48%"></span><span style="--bar:39%"></span><span style="--bar:62%"></span><span style="--bar:52%"></span><span style="--bar:78%"></span><span style="--bar:58%"></span><span style="--bar:92%"></span><span style="--bar:69%"></span><span style="--bar:82%"></span><span style="--bar:61%"></span><span style="--bar:100%"></span>
+                        </div>
+                    </div>
+                    <div class="auth-preview-footer"><span><i class="auth-mini-icon">✓</i> রিয়েল-টাইম স্টক আপডেট</span><span><i class="auth-mini-icon">↗</i> সহজ বিক্রয় ব্যবস্থাপনা</span></div>
                 </div>
-                <button id="emailSignIn" type="submit" class="auth-submit w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">ইমেইল দিয়ে সাইন ইন</button>
-            </form>
-            <p id="authMessage" role="status" aria-live="polite" class="mt-4 hidden rounded-lg px-3 py-2 text-sm"></p>
-            <p class="mt-6 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">অ্যাকাউন্ট Firebase Authentication থেকে অনুমোদিত হতে হবে। প্রথমবার database চালু করতে admin account দিয়ে সাইন ইন করুন।</p>
-        </section>
+
+                <div class="auth-benefits">
+                    <div><span class="auth-benefit-icon auth-benefit-blue">৳</span><span><strong>দ্রুত বিক্রয়</strong><small>স্মার্ট POS ও রসিদ</small></span></div>
+                    <div><span class="auth-benefit-icon auth-benefit-green">▦</span><span><strong>স্টক নিয়ন্ত্রণ</strong><small>পণ্য ও ইনভেন্টরি</small></span></div>
+                    <div><span class="auth-benefit-icon auth-benefit-violet">⌖</span><span><strong>একাধিক আউটলেট</strong><small>এক ড্যাশবোর্ডে সব</small></span></div>
+                </div>
+            </section>
+
+            <section class="auth-card">
+                <div class="auth-card-heading">
+                    <span class="auth-card-icon">↗</span>
+                    <p>স্বাগতম</p>
+                    <h2>আপনার অ্যাকাউন্টে প্রবেশ করুন</h2>
+                    <span>আপনার কাজ চালিয়ে যেতে সাইন ইন করুন</span>
+                </div>
+                <button id="googleSignIn" type="button" class="auth-google">
+                    <svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#FFC107" d="M43.6 24.5c0-1.4-.1-2.8-.4-4.1H24v7.8h11a9.4 9.4 0 0 1-4.1 6.2v5.1h6.6c3.9-3.6 6.1-8.9 6.1-15Z"/><path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.8l-6.6-5.1c-1.8 1.2-4 2-6.9 2-5.3 0-9.8-3.6-11.4-8.4H5.8v5.3A20 20 0 0 0 24 44Z"/><path fill="#4A90E2" d="M12.6 27.7a12 12 0 0 1 0-7.4V15H5.8a20 20 0 0 0 0 18Z"/><path fill="#EA4335" d="M24 11.9c3 0 5.6 1 7.7 3l5.8-5.8C34 5.8 29.5 4 24 4A20 20 0 0 0 5.8 15l6.8 5.3c1.6-4.8 6.1-8.4 11.4-8.4Z"/></svg>
+                    Google দিয়ে চালিয়ে যান
+                </button>
+                <div class="auth-divider"><span>অথবা ইমেইল দিয়ে সাইন ইন</span></div>
+                <form id="emailSignInForm" class="auth-form">
+                    <label for="email">ইমেইল ঠিকানা</label>
+                    <div class="auth-input-wrap"><span aria-hidden="true">✉</span><input id="email" type="email" autocomplete="username" placeholder="name@example.com" required></div>
+                    <div class="auth-password-row"><label for="password">পাসওয়ার্ড</label><button id="forgotPassword" type="button">পাসওয়ার্ড ভুলে গেছেন?</button></div>
+                    <div class="auth-input-wrap"><span aria-hidden="true">♙</span><input id="password" type="password" autocomplete="current-password" placeholder="আপনার পাসওয়ার্ড লিখুন" required></div>
+                    <button id="emailSignIn" type="submit" class="auth-submit">সাইন ইন করুন <span aria-hidden="true">→</span></button>
+                </form>
+                <p id="authMessage" role="status" aria-live="polite" class="auth-message hidden"></p>
+                <div class="auth-secure-note"><span>▣</span> আপনার অ্যাকাউন্ট ও ব্যবসার তথ্য সুরক্ষিত</div>
+            </section>
+        </div>
+
+        <footer class="auth-footer"><span>© 2026 MEVA Rajshahi Zone</span><span>নিরাপদ ব্যবসা ব্যবস্থাপনা</span></footer>
     </main>
     <script>
         const authMessage = document.getElementById('authMessage');
@@ -63,7 +87,7 @@
 
         function showAuthMessage(message, isError = true) {
             authMessage.textContent = message;
-            authMessage.className = `mt-4 rounded-lg px-3 py-2 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
+            authMessage.className = `auth-message ${isError ? 'auth-message-error' : 'auth-message-success'}`;
         }
 
         function authErrorMessage(error) {
