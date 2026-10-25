@@ -1,0 +1,5 @@
+---
+deployment:
+  tasks:
+    - export DEPLOYPATH=/home/sapahare/public_html/mevarajshahi
+    - /bin/cp -R * $DEPLOYPATH
