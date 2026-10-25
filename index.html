@@ -59,6 +59,7 @@
         const emailForm = document.getElementById('emailSignInForm');
         const googleButton = document.getElementById('googleSignIn');
         const emailButton = document.getElementById('emailSignIn');
+        let signInInProgress = false;
 
         function showAuthMessage(message, isError = true) {
             authMessage.textContent = message;
@@ -73,7 +74,8 @@
                 'auth/too-many-requests': 'অনেকবার চেষ্টা হয়েছে। পরে আবার চেষ্টা করুন।',
                 'auth/popup-closed-by-user': 'Google sign-in বন্ধ করা হয়েছে।',
                 'auth/configuration-not-found': 'Firebase Authentication এখনো চালু করা হয়নি। Firebase Console-এ Authentication enable করুন।',
-                'auth/api-key-not-valid': 'Firebase API key গ্রহণ করেনি। Firebase Web app config মিলিয়ে দেখুন।'
+                'auth/api-key-not-valid': 'Firebase API key গ্রহণ করেনি। Firebase Web app config মিলিয়ে দেখুন।',
+                'auth/unauthorized-domain': 'এই website domain Firebase-এ অনুমোদিত নয়। Authentication settings-এ vokampagol.github.io যোগ করুন।'
             };
             return messages[error.code] || `সাইন ইন করা যায়নি: ${error.message}`;
         }
@@ -90,15 +92,29 @@
             event.preventDefault();
             if (!requireFirebase()) return;
             emailButton.disabled = true;
+            signInInProgress = true;
             try {
-                await firebase.auth().signInWithEmailAndPassword(
+                const credential = await firebase.auth().signInWithEmailAndPassword(
                     document.getElementById('email').value.trim(),
                     document.getElementById('password').value
                 );
+                if (
+                    credential.user.email?.toLowerCase() === window.MEVA_ADMIN_EMAIL.toLowerCase()
+                    && !credential.user.emailVerified
+                ) {
+                    try {
+                        await credential.user.sendEmailVerification();
+                    } finally {
+                        await firebase.auth().signOut();
+                    }
+                    showAuthMessage('Admin email verify করার link পাঠানো হয়েছে। Inbox থেকে verify করে আবার sign in করুন।', false);
+                    return;
+                }
                 window.location.href = './mobile.html';
             } catch (error) {
                 showAuthMessage(authErrorMessage(error));
             } finally {
+                signInInProgress = false;
                 emailButton.disabled = false;
             }
         });
@@ -106,6 +122,7 @@
         googleButton.addEventListener('click', async () => {
             if (!requireFirebase()) return;
             googleButton.disabled = true;
+            signInInProgress = true;
             try {
                 const provider = new firebase.auth.GoogleAuthProvider();
                 await firebase.auth().signInWithPopup(provider);
@@ -113,6 +130,7 @@
             } catch (error) {
                 showAuthMessage(authErrorMessage(error));
             } finally {
+                signInInProgress = false;
                 googleButton.disabled = false;
             }
         });
@@ -135,7 +153,7 @@
 
         if (window.mevaFirebaseReady) {
             firebase.auth().onAuthStateChanged((user) => {
-                if (user) window.location.href = './mobile.html';
+                if (user && !signInInProgress) window.location.href = './mobile.html';
             });
         }
     </script>

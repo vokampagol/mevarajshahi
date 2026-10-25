@@ -421,7 +421,11 @@
             const snapshot = await collection.get();
             if (snapshot.empty) {
                 if (!isCurrentAdmin() && collectionName !== 'orders') {
-                    throw new Error('Database not initialized. Ask the admin to sign in first.');
+                    const signedInEmail = signedInUser?.email?.toLowerCase();
+                    if (signedInEmail === window.MEVA_ADMIN_EMAIL.toLowerCase() && !signedInUser.emailVerified) {
+                        throw new Error('Admin email is not verified. Sign out, verify it from the email inbox, then sign in again.');
+                    }
+                    throw new Error('Database not initialized. Ask the verified admin to sign in first.');
                 }
                 if (!isCurrentAdmin()) return [];
                 const values = localValues.length ? localValues : fallbackValues;
