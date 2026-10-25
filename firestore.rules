@@ -1,39 +1,101 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    function signedIn() {
+    // Prototype schema: products have id/name/brand/prices/stock and optional
+    // imagePath; shops have id/name/address and optional logoPath/documents;
+    // orders have id/customer details/items/totals/payment/date/shopId/createdBy.
+    // Customer names and phone numbers in orders are private business data.
+    function isSignedIn() {
       return request.auth != null;
     }
 
-    function isAdmin() {
-      return signedIn()
+    function isVerifiedAdmin() {
+      return isSignedIn()
         && request.auth.token.email == 'sapaharitsolution@gmail.com'
         && request.auth.token.email_verified == true;
     }
 
+    function validProduct(data) {
+      return data.keys().hasAll([
+          'id', 'name', 'brand', 'dealer_price', 'retail_price', 'mrp', 'stock'
+        ])
+        && data.keys().hasOnly([
+          'id', 'name', 'brand', 'dealer_price', 'retail_price', 'mrp', 'stock', 'imagePath'
+        ])
+        && data.id is int
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 200
+        && data.brand is string && data.brand.size() > 0 && data.brand.size() <= 80
+        && data.dealer_price is number && data.dealer_price >= 0 && data.dealer_price <= 10000000
+        && data.retail_price is number && data.retail_price >= 0 && data.retail_price <= 10000000
+        && data.mrp is number && data.mrp >= 0 && data.mrp <= 10000000
+        && data.stock is int && data.stock >= 0 && data.stock <= 1000000
+        && (!('imagePath' in data)
+          || (data.imagePath is string
+            && data.imagePath.size() <= 200
+            && data.imagePath.matches('^uploads/products/[A-Za-z0-9_-]{1,80}/[a-f0-9]{32}\\.(jpg|png|webp)$')));
+    }
+
+    function validShop(data) {
+      return data.keys().hasAll(['id', 'name', 'address'])
+        && data.keys().hasOnly(['id', 'name', 'address', 'logoPath', 'documents'])
+        && data.id is int
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 120
+        && data.address is string && data.address.size() > 0 && data.address.size() <= 240
+        && (!('logoPath' in data)
+          || (data.logoPath is string
+            && data.logoPath.size() <= 200
+            && data.logoPath.matches('^uploads/shops/[A-Za-z0-9_-]{1,80}/[a-f0-9]{32}\\.(jpg|png|webp)$')))
+        && (!('documents' in data)
+          || (data.documents is list
+            && data.documents.size() <= 20
+            && data.documents.toSet().size() == data.documents.size()));
+    }
+
+    function validOrder(data, orderId) {
+      return data.keys().hasAll([
+          'id', 'customerName', 'customerPhone', 'items', 'subtotal', 'discount',
+          'total', 'paymentMethod', 'date', 'shopId', 'createdBy'
+        ])
+        && data.keys().hasOnly([
+          'id', 'customerName', 'customerPhone', 'items', 'subtotal', 'discount',
+          'total', 'paymentMethod', 'date', 'shopId', 'createdBy'
+        ])
+        && data.id is string && data.id == orderId && data.id.size() <= 64
+        && data.customerName is string && data.customerName.size() > 0 && data.customerName.size() <= 100
+        && data.customerPhone is string && data.customerPhone.size() > 0 && data.customerPhone.size() <= 40
+        && data.items is list && data.items.size() > 0 && data.items.size() <= 100
+        && data.subtotal is number && data.subtotal >= 0 && data.subtotal <= 100000000
+        && data.discount is number && data.discount >= 0 && data.discount <= 100000000
+        && data.total is number && data.total >= 0 && data.total <= data.subtotal
+        && data.paymentMethod in ['Cash', 'bKash', 'Nagad', 'Card']
+        && data.date is string && data.date.size() > 0 && data.date.size() <= 80
+        && data.shopId is int
+        && data.createdBy is string && data.createdBy == request.auth.uid;
+    }
+
     match /products/{productId} {
-      allow read: if signedIn();
-      allow create, delete: if isAdmin();
-      allow update: if isAdmin()
-        || (signedIn()
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['stock'])
-          && request.resource.data.stock is int
-          && request.resource.data.stock >= 0
-          && request.resource.data.stock < resource.data.stock);
+      allow read: if isVerifiedAdmin();
+      allow create: if isVerifiedAdmin() && validProduct(request.resource.data);
+      allow update: if isVerifiedAdmin()
+        && validProduct(request.resource.data)
+        && request.resource.data.id == resource.data.id;
+      allow delete: if isVerifiedAdmin();
     }
 
     match /shops/{shopId} {
-      allow read: if signedIn();
-      allow write: if isAdmin();
+      allow read: if isVerifiedAdmin();
+      allow create: if isVerifiedAdmin() && validShop(request.resource.data);
+      allow update: if isVerifiedAdmin()
+        && validShop(request.resource.data)
+        && request.resource.data.id == resource.data.id;
+      allow delete: if isVerifiedAdmin();
     }
 
     match /orders/{orderId} {
-      allow read: if signedIn();
-      allow create: if signedIn()
-        && request.resource.data.id == orderId
-        && request.resource.data.total is number
-        && request.resource.data.total >= 0;
-      allow update, delete: if isAdmin();
+      allow read: if isVerifiedAdmin();
+      allow create: if isVerifiedAdmin() && validOrder(request.resource.data, orderId);
+      allow update: if isVerifiedAdmin() && validOrder(request.resource.data, orderId);
+      allow delete: if isVerifiedAdmin();
     }
 
     match /{document=**} {

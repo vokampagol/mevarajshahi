@@ -11,6 +11,7 @@
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-storage-compat.js"></script>
     <script src="firebase-config.js?v=2"></script>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen">
@@ -267,6 +268,8 @@
         </main>
     </div>
 
+    <input id="mediaUploadInput" type="file" class="hidden" onchange="handleMediaSelection(event)">
+
     <!-- INVOICE MODAL -->
     <div id="invoiceModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
         <div class="bg-white w-full max-w-md rounded-2xl p-6 shadow-2xl space-y-4">
@@ -370,8 +373,10 @@
         let cart = [];
         let activeShopId = 1;
         let firestore;
+        let storage;
         let signedInUser;
         let unsubscribeData = [];
+        let pendingMediaTarget = null;
 
         function isCurrentAdmin() {
             return !!signedInUser
@@ -473,6 +478,7 @@
             unsubscribeData.forEach((unsubscribe) => unsubscribe());
             unsubscribeData = [];
             firestore = firebase.firestore();
+            storage = firebase.storage();
             try {
                 const loaded = await Promise.all([
                     loadSharedCollection('products', localDataFor('amg_products', initialProducts), initialProducts),
@@ -688,6 +694,10 @@
 
         // Complete Sale & Auto Deduct Inventory Stock
         async function completeSale() {
+            if (!isCurrentAdmin()) {
+                alert('POS access is currently limited to the verified admin account.');
+                return;
+            }
             if (cart.length === 0) {
                 alert("Cart is empty!");
                 return;
@@ -712,7 +722,9 @@
                 discount: discount,
                 total: grandTotal,
                 paymentMethod: paymentMethod,
-                date: dateStr
+                date: dateStr,
+                shopId: activeShopId,
+                createdBy: signedInUser.uid
             };
             const orderRef = firestore.collection('orders').doc(orderId);
             const productRefs = cart.map((item) => firestore.collection('products').doc(String(item.id)));
@@ -801,7 +813,10 @@
             tbody.innerHTML = filtered.map((p, idx) => `
                 <tr class="hover:bg-slate-50">
                     <td class="p-4 text-xs font-bold text-slate-400">${idx + 1}</td>
-                    <td class="p-4 font-semibold text-slate-800">${p.name}</td>
+                    <td class="p-4">
+                        ${p.imagePath ? `<img data-storage-path="${escapeHtml(p.imagePath)}" alt="" class="mb-2 h-12 w-12 rounded-lg object-cover">` : ''}
+                        <span class="font-semibold text-slate-800">${escapeHtml(p.name)}</span>
+                    </td>
                     <td class="p-4"><span class="bg-slate-100 text-slate-700 text-xs px-2 py-0.5 rounded font-medium">${p.brand}</span></td>
                     <td class="p-4 font-mono text-slate-600">৳${p.dealer_price}</td>
                     <td class="p-4 font-mono font-bold text-blue-600">৳${p.retail_price}</td>
@@ -812,12 +827,18 @@
                         </span>
                     </td>
                     <td class="p-4 text-right">
+                        <div class="flex justify-end gap-2">
+                        <button onclick="chooseMediaUpload('product-image', ${p.id})" class="bg-blue-50 hover:bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded">
+                            Upload image
+                        </button>
                         <button onclick="addStockPrompt(${p.id})" class="bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold px-2.5 py-1 rounded">
                             + Restock
                         </button>
+                        </div>
                     </td>
                 </tr>
             `).join('');
+            loadStorageImages(tbody);
         }
 
         function addStockPrompt(id) {
@@ -867,26 +888,146 @@
             const grid = document.getElementById('shopsGrid');
             grid.innerHTML = shops.map(s => `
                 <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                    <div class="bg-blue-50 w-10 h-10 rounded-lg flex items-center justify-center text-blue-600 mb-4">
+                    ${s.logoPath
+                        ? `<img data-storage-path="${escapeHtml(s.logoPath)}" alt="${escapeHtml(s.name)} logo" class="mb-4 h-16 w-16 rounded-xl object-cover">`
+                        : `<div class="bg-blue-50 w-10 h-10 rounded-lg flex items-center justify-center text-blue-600 mb-4">`
+                    }
+                    ${s.logoPath ? '' : `
                         <i data-lucide="store" class="w-5 h-5"></i>
+                    </div>`}
+                    <h3 class="font-bold text-slate-800 text-lg mb-1">${escapeHtml(s.name)}</h3>
+                    <p class="text-xs text-slate-500">${escapeHtml(s.address)}</p>
+                    ${Array.isArray(s.documents) ? s.documents.map((path, index) => `
+                        <a data-storage-path="${escapeHtml(path)}" data-storage-link="true" target="_blank" rel="noopener" class="mt-2 block text-xs font-semibold text-blue-700">Document ${index + 1}</a>
+                    `).join('') : ''}
+                    <div class="mt-4 flex flex-wrap gap-2">
+                        <button onclick="editShop(${s.id})" class="rounded bg-slate-100 px-2.5 py-1.5 text-xs font-semibold hover:bg-slate-200">Edit</button>
+                        <button onclick="chooseMediaUpload('shop-logo', ${s.id})" class="rounded bg-blue-50 px-2.5 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100">Upload logo</button>
+                        <button onclick="chooseMediaUpload('document', ${s.id})" class="rounded bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">Upload document</button>
                     </div>
-                    <h3 class="font-bold text-slate-800 text-lg mb-1">${s.name}</h3>
-                    <p class="text-xs text-slate-500">${s.address}</p>
                 </div>
             `).join('');
             lucide.createIcons();
+            loadStorageImages(grid);
         }
 
         function addNewShop() {
             if (!requireAdminAction('Adding a shop')) return;
-            const name = prompt("Shop Outlet Name:");
+            const name = prompt("Shop Outlet Name:")?.trim();
             if (!name) return;
-            const address = prompt("Address:", "Mirpur, Dhaka") || "Mirpur, Dhaka";
+            const address = prompt("Address:", "Mirpur, Dhaka")?.trim() || "Mirpur, Dhaka";
 
-            shops.push({ id: Date.now(), name, address });
+            shops.push({ id: Date.now(), name, address, documents: [] });
             persistSharedCollection('shops', shops, 'amg_shops');
             renderShopsSelect();
             renderShopsList();
+        }
+
+        function escapeHtml(value) {
+            return String(value).replace(/[&<>"']/g, (character) => ({
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            })[character]);
+        }
+
+        function editShop(id) {
+            if (!requireAdminAction('Editing a shop')) return;
+            const shop = shops.find((item) => item.id === id);
+            if (!shop) return;
+            const name = prompt('Shop Outlet Name:', shop.name)?.trim();
+            if (!name) return;
+            const address = prompt('Address:', shop.address)?.trim();
+            if (!address) return;
+
+            shop.name = name;
+            shop.address = address;
+            persistSharedCollection('shops', shops, 'amg_shops');
+            renderShopsSelect();
+            renderShopsList();
+        }
+
+        function chooseMediaUpload(kind, id) {
+            if (!requireAdminAction('Uploading a file')) return;
+            pendingMediaTarget = { kind, id };
+            const input = document.getElementById('mediaUploadInput');
+            input.accept = kind === 'document'
+                ? 'application/pdf'
+                : 'image/jpeg,image/png,image/webp';
+            input.value = '';
+            input.click();
+        }
+
+        async function handleMediaSelection(event) {
+            const file = event.target.files?.[0];
+            const target = pendingMediaTarget;
+            pendingMediaTarget = null;
+            if (!file || !target) return;
+            if (!requireAdminAction('Uploading a file')) return;
+            if (!window.location.pathname.endsWith('.php')) {
+                alert('File uploads are available after deploying the PHP app to cPanel.');
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('type', target.kind);
+            formData.append('entityId', String(target.id));
+            formData.append('file', file);
+
+            try {
+                const token = await signedInUser.getIdToken();
+                const response = await fetch('./api/upload.php', {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                    body: formData
+                });
+                const result = await response.json();
+                if (!response.ok) {
+                    throw new Error(result.error || `Upload failed (${response.status}).`);
+                }
+
+                if (target.kind === 'product-image') {
+                    const product = products.find((item) => item.id === target.id);
+                    if (!product) throw new Error('Product no longer exists.');
+                    product.imagePath = result.path;
+                    await firestore.collection('products').doc(String(product.id)).update({ imagePath: result.path });
+                    localStorage.setItem('amg_products', JSON.stringify(products));
+                } else {
+                    const shop = shops.find((item) => item.id === target.id);
+                    if (!shop) throw new Error('Shop no longer exists.');
+                    if (target.kind === 'shop-logo') {
+                        shop.logoPath = result.path;
+                        await firestore.collection('shops').doc(String(shop.id)).update({ logoPath: result.path });
+                    } else {
+                        shop.documents = [...(shop.documents || []), result.path];
+                        await firestore.collection('shops').doc(String(shop.id)).update({ documents: shop.documents });
+                    }
+                    localStorage.setItem('amg_shops', JSON.stringify(shops));
+                }
+
+                renderInventoryTable();
+                renderShopsList();
+            } catch (error) {
+                console.error('File upload failed:', error);
+                alert(`File upload failed: ${error.message}`);
+            }
+        }
+
+        function loadStorageImages(container) {
+            container.querySelectorAll('[data-storage-path]').forEach(async (element) => {
+                try {
+                    const url = await storage.ref(element.dataset.storagePath).getDownloadURL();
+                    if (element.dataset.storageLink) {
+                        element.href = url;
+                    } else {
+                        element.src = url;
+                    }
+                } catch (error) {
+                    console.error(`Could not load stored file ${element.dataset.storagePath}:`, error);
+                }
+            });
         }
     </script>
 </body>

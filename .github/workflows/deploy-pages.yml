@@ -29,10 +29,15 @@ jobs:
         with:
           enablement: true
 
+      - name: Prepare static Pages files
+        run: |
+          mkdir pages-site
+          cp index.html mobile.html style.css firebase-config.js pages-site/
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: pages-site
 
       - name: Deploy to GitHub Pages
         id: deployment

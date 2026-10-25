@@ -1,0 +1,14 @@
+Options -Indexes
+DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^index\.html$ index.php [R=302,L]
+    RewriteRule ^mobile\.html$ mobile.php [R=302,L]
+    RewriteRule ^vendor/ - [F,L,NC]
+    RewriteRule (^|/)\. - [F,L]
+</IfModule>
+
+<FilesMatch "^(composer\.(json|lock)|firestore\.rules|storage\.rules|README\.md)$">
+    Require all denied
+</FilesMatch>
