@@ -2,7 +2,7 @@ window.MEVA_ADMIN_EMAIL = 'sapaharitsolution@gmail.com';
 window.mevaFirebaseReady = false;
 
 const firebaseConfig = {
-    apiKey: 'AIzaSyC2VzAmh3wxYlkQdZYcyrPN5TlyI66GvdU',
+    apiKey: 'AIzaSyC2VzAMh3wxYlkQdZYcyrPN5TlyI66GvdU',
     authDomain: 'meva-rajshahi.firebaseapp.com',
     projectId: 'meva-rajshahi',
     storageBucket: 'meva-rajshahi.firebasestorage.app',

@@ -9,7 +9,7 @@
     <link rel="stylesheet" href="./style.css">
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
-    <script src="firebase-config.js"></script>
+    <script src="firebase-config.js?v=2"></script>
 </head>
 <body class="auth-page min-h-screen bg-slate-100 text-slate-800">
     <main class="auth-layout mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-10 lg:grid-cols-2 lg:px-10">
@@ -71,7 +71,9 @@
                 'auth/user-not-found': 'এই ইমেইলে কোনো account পাওয়া যায়নি।',
                 'auth/wrong-password': 'পাসওয়ার্ড সঠিক নয়।',
                 'auth/too-many-requests': 'অনেকবার চেষ্টা হয়েছে। পরে আবার চেষ্টা করুন।',
-                'auth/popup-closed-by-user': 'Google sign-in বন্ধ করা হয়েছে।'
+                'auth/popup-closed-by-user': 'Google sign-in বন্ধ করা হয়েছে।',
+                'auth/configuration-not-found': 'Firebase Authentication এখনো চালু করা হয়নি। Firebase Console-এ Authentication enable করুন।',
+                'auth/api-key-not-valid': 'Firebase API key গ্রহণ করেনি। Firebase Web app config মিলিয়ে দেখুন।'
             };
             return messages[error.code] || `সাইন ইন করা যায়নি: ${error.message}`;
         }
