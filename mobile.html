@@ -8,8 +8,18 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore-compat.js"></script>
+    <script src="firebase-config.js"></script>
 </head>
 <body class="bg-slate-100 font-sans text-slate-800 antialiased min-h-screen">
+    <div id="authGate" class="fixed inset-0 z-[100] grid place-items-center bg-slate-100 p-6 text-center">
+        <div class="max-w-md rounded-xl border border-slate-200 bg-white p-6 shadow-lg">
+            <p id="authGateMessage" class="text-sm text-slate-700">Checking sign-in...</p>
+            <a href="./index.html" class="mt-4 inline-block text-sm font-semibold text-blue-700">Back to sign in</a>
+        </div>
+    </div>
 
     <div class="flex h-screen overflow-hidden">
         <!-- Sidebar Navigation -->
@@ -62,9 +72,11 @@
                     </select>
                 </div>
                 <div class="flex items-center space-x-3">
-                    <span class="bg-emerald-100 text-emerald-800 text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1">
-                        <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> System Live
-                    </span>
+                    <span id="signedInUser" class="max-w-48 truncate text-xs text-slate-600"></span>
+                    <span id="adminBadge" class="hidden bg-blue-100 text-blue-800 text-xs font-semibold px-2.5 py-1 rounded-full">Admin</span>
+                    <button onclick="signOutUser()" class="rounded-lg bg-slate-200 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-300">
+                        Sign out
+                    </button>
                 </div>
             </header>
 
@@ -357,15 +369,168 @@
         let orders = JSON.parse(localStorage.getItem('amg_orders')) || [];
         let cart = [];
         let activeShopId = 1;
+        let firestore;
+        let signedInUser;
+        let unsubscribeData = [];
+
+        function isCurrentAdmin() {
+            return !!signedInUser
+                && signedInUser.email
+                && signedInUser.email.toLowerCase() === window.MEVA_ADMIN_EMAIL.toLowerCase()
+                && signedInUser.emailVerified;
+        }
+
+        function showAuthGate(message) {
+            document.getElementById('authGateMessage').textContent = message;
+            document.getElementById('authGate').classList.remove('hidden');
+        }
+
+        function hideAuthGate() {
+            document.getElementById('authGate').classList.add('hidden');
+        }
+
+        async function signOutUser() {
+            try {
+                await firebase.auth().signOut();
+                window.location.href = './index.html';
+            } catch (error) {
+                console.error('Could not sign out:', error);
+                alert(`Sign out failed: ${error.message}`);
+            }
+        }
+
+        function localDataFor(key, fallback) {
+            const stored = localStorage.getItem(key);
+            return stored ? JSON.parse(stored) : fallback;
+        }
+
+        function dataCollection(collectionName, values) {
+            return (async () => {
+                for (let offset = 0; offset < values.length; offset += 450) {
+                    const batch = firestore.batch();
+                    values.slice(offset, offset + 450).forEach((value) => {
+                        batch.set(firestore.collection(collectionName).doc(String(value.id)), value);
+                    });
+                    await batch.commit();
+                }
+            })();
+        }
+
+        async function loadSharedCollection(collectionName, localValues, fallbackValues) {
+            const collection = firestore.collection(collectionName);
+            const snapshot = await collection.get();
+            if (snapshot.empty) {
+                if (!isCurrentAdmin() && collectionName !== 'orders') {
+                    throw new Error('Database not initialized. Ask the admin to sign in first.');
+                }
+                if (!isCurrentAdmin()) return [];
+                const values = localValues.length ? localValues : fallbackValues;
+                if (values.length) await dataCollection(collectionName, values);
+                return values;
+            }
+            return snapshot.docs.map((doc) => doc.data());
+        }
+
+        function watchSharedCollection(collectionName, onChange) {
+            const unsubscribe = firestore.collection(collectionName).onSnapshot((snapshot) => {
+                onChange(snapshot.docs.map((doc) => doc.data()));
+            }, (error) => {
+                console.error(`Could not sync ${collectionName}:`, error);
+                showAuthGate(`Could not sync ${collectionName}: ${error.message}`);
+            });
+            unsubscribeData.push(unsubscribe);
+        }
+
+        function persistSharedCollection(collectionName, values, storageKey) {
+            localStorage.setItem(storageKey, JSON.stringify(values));
+            return dataCollection(collectionName, values).catch((error) => {
+                console.error(`Could not save ${collectionName}:`, error);
+                const snapshot = firestore.collection(collectionName).get();
+                snapshot.then((current) => {
+                    const restored = current.docs.map((doc) => doc.data());
+                    if (collectionName === 'products') products = restored;
+                    if (collectionName === 'orders') orders = restored;
+                    if (collectionName === 'shops') shops = restored;
+                    localStorage.setItem(storageKey, JSON.stringify(restored));
+                    renderDashboard();
+                    renderPOSProducts();
+                    renderInventoryTable();
+                    renderShopsSelect();
+                    renderShopsList();
+                }).catch((restoreError) => {
+                    console.error(`Could not restore ${collectionName} from Firestore:`, restoreError);
+                });
+                alert(`Could not save changes to the shared database: ${error.message}`);
+                return false;
+            });
+        }
+
+        async function initializeSharedData() {
+            unsubscribeData.forEach((unsubscribe) => unsubscribe());
+            unsubscribeData = [];
+            firestore = firebase.firestore();
+            try {
+                const loaded = await Promise.all([
+                    loadSharedCollection('products', localDataFor('amg_products', initialProducts), initialProducts),
+                    loadSharedCollection('orders', localDataFor('amg_orders', []), []),
+                    loadSharedCollection('shops', localDataFor('amg_shops', shops), shops)
+                ]);
+                products = loaded[0];
+                orders = loaded[1];
+                shops = loaded[2];
+                localStorage.setItem('amg_products', JSON.stringify(products));
+                localStorage.setItem('amg_orders', JSON.stringify(orders));
+                localStorage.setItem('amg_shops', JSON.stringify(shops));
+
+                watchSharedCollection('products', (values) => {
+                    products = values;
+                    localStorage.setItem('amg_products', JSON.stringify(products));
+                    renderInventoryTable();
+                    renderPOSProducts();
+                    renderDashboard();
+                });
+                watchSharedCollection('orders', (values) => {
+                    orders = values;
+                    localStorage.setItem('amg_orders', JSON.stringify(orders));
+                    renderDashboard();
+                });
+                watchSharedCollection('shops', (values) => {
+                    shops = values;
+                    localStorage.setItem('amg_shops', JSON.stringify(shops));
+                    renderShopsSelect();
+                    renderShopsList();
+                });
+
+                renderShopsSelect();
+                renderDashboard();
+                renderPOSProducts();
+                renderInventoryTable();
+                renderShopsList();
+                hideAuthGate();
+            } catch (error) {
+                console.error('Could not initialize shared data:', error);
+                showAuthGate(`Database setup or access failed: ${error.message}`);
+            }
+        }
 
         // Initialize App
         window.addEventListener('DOMContentLoaded', () => {
             lucide.createIcons();
-            renderShopsSelect();
-            renderDashboard();
-            renderPOSProducts();
-            renderInventoryTable();
-            renderShopsList();
+            if (!window.mevaFirebaseReady) {
+                showAuthGate('Firebase config is missing. Follow Firebase setup in README.md.');
+                return;
+            }
+            firebase.auth().onAuthStateChanged((user) => {
+                signedInUser = user;
+                if (!user) {
+                    unsubscribeData.forEach((unsubscribe) => unsubscribe());
+                    window.location.href = './index.html';
+                    return;
+                }
+                document.getElementById('signedInUser').textContent = user.email || user.displayName || 'Signed in';
+                document.getElementById('adminBadge').classList.toggle('hidden', !isCurrentAdmin());
+                initializeSharedData();
+            });
         });
 
         // Tab Switching
@@ -376,6 +541,12 @@
             });
             document.getElementById(`tab-${tabName}`).classList.remove('hidden');
             document.getElementById(`nav-${tabName}`).className = "w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-sm font-medium bg-blue-600 text-white transition-all";
+        }
+
+        function requireAdminAction(action) {
+            if (isCurrentAdmin()) return true;
+            alert(`${action} is restricted to the verified admin account.`);
+            return false;
         }
 
         // Shop Selection
@@ -512,7 +683,7 @@
         }
 
         // Complete Sale & Auto Deduct Inventory Stock
-        function completeSale() {
+        async function completeSale() {
             if (cart.length === 0) {
                 alert("Cart is empty!");
                 return;
@@ -524,16 +695,8 @@
             const subtotal = cart.reduce((acc, c) => acc + (c.retail_price * c.qty), 0);
             const discount = parseFloat(document.getElementById('cartDiscount').value) || 0;
             const grandTotal = Math.max(0, subtotal - discount);
-            const orderId = "INV-" + Math.floor(1000 + Math.random() * 9000);
+            const orderId = `INV-${Date.now()}-${Math.floor(1000 + Math.random() * 9000)}`;
             const dateStr = new Date().toLocaleString();
-
-            // 1. Auto Deduct Inventory Stock
-            cart.forEach(item => {
-                const prod = products.find(p => p.id === item.id);
-                if (prod) {
-                    prod.stock -= item.qty;
-                }
-            });
 
             // 2. Record Order
             const newOrder = {
@@ -547,9 +710,37 @@
                 paymentMethod: paymentMethod,
                 date: dateStr
             };
-            orders.push(newOrder);
+            const orderRef = firestore.collection('orders').doc(orderId);
+            const productRefs = cart.map((item) => firestore.collection('products').doc(String(item.id)));
+            const saleItems = cart.map((item) => ({ id: item.id, qty: item.qty }));
 
-            // Save Persistence
+            try {
+                await firestore.runTransaction(async (transaction) => {
+                    const snapshots = await Promise.all(productRefs.map((ref) => transaction.get(ref)));
+                    snapshots.forEach((snapshot, index) => {
+                        const item = saleItems[index];
+                        if (!snapshot.exists || snapshot.data().stock < item.qty) {
+                            throw new Error('Stock changed or is insufficient. Refresh and try the sale again.');
+                        }
+                    });
+                    snapshots.forEach((snapshot, index) => {
+                        transaction.update(productRefs[index], {
+                            stock: snapshot.data().stock - saleItems[index].qty
+                        });
+                    });
+                    transaction.set(orderRef, newOrder);
+                });
+            } catch (error) {
+                console.error('Sale could not be saved:', error);
+                alert(`Sale could not be completed: ${error.message}`);
+                return;
+            }
+
+            orders.push(newOrder);
+            saleItems.forEach((item) => {
+                const product = products.find((entry) => entry.id === item.id);
+                if (product) product.stock -= item.qty;
+            });
             localStorage.setItem('amg_products', JSON.stringify(products));
             localStorage.setItem('amg_orders', JSON.stringify(orders));
 
@@ -626,12 +817,13 @@
         }
 
         function addStockPrompt(id) {
+            if (!requireAdminAction('Restocking stock')) return;
             const qty = prompt("Enter stock quantity to add:");
             if (qty && !isNaN(qty) && parseInt(qty) > 0) {
                 const prod = products.find(p => p.id === id);
                 if (prod) {
                     prod.stock += parseInt(qty);
-                    localStorage.setItem('amg_products', JSON.stringify(products));
+                    persistSharedCollection('products', products, 'amg_products');
                     renderInventoryTable();
                     renderPOSProducts();
                     renderDashboard();
@@ -640,6 +832,7 @@
         }
 
         function openAddProductModal() {
+            if (!requireAdminAction('Adding a product')) return;
             const name = prompt("Product Name:");
             if (!name) return;
             const brand = prompt("Brand:", "MEVA Rajshahi Zone") || "MEVA Rajshahi Zone";
@@ -659,7 +852,7 @@
             };
 
             products.unshift(newProd);
-            localStorage.setItem('amg_products', JSON.stringify(products));
+            persistSharedCollection('products', products, 'amg_products');
             renderInventoryTable();
             renderPOSProducts();
             renderDashboard();
@@ -681,12 +874,13 @@
         }
 
         function addNewShop() {
+            if (!requireAdminAction('Adding a shop')) return;
             const name = prompt("Shop Outlet Name:");
             if (!name) return;
             const address = prompt("Address:", "Mirpur, Dhaka") || "Mirpur, Dhaka";
 
             shops.push({ id: Date.now(), name, address });
-            localStorage.setItem('amg_shops', JSON.stringify(shops));
+            persistSharedCollection('shops', shops, 'amg_shops');
             renderShopsSelect();
             renderShopsList();
         }

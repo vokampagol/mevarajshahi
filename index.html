@@ -3,10 +3,139 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="refresh" content="0; url=./mobile.html">
-    <title>MEVA Rajshahi Zone</title>
+    <meta name="theme-color" content="#0f172a">
+    <title>MEVA Rajshahi Zone | Sign in</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="./style.css">
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.12.5/firebase-auth-compat.js"></script>
+    <script src="firebase-config.js"></script>
 </head>
-<body>
-    <p>Redirecting to MEVA Rajshahi Zone. <a href="./mobile.html">Open the app</a>.</p>
+<body class="auth-page min-h-screen bg-slate-100 text-slate-800">
+    <main class="auth-layout mx-auto grid min-h-screen max-w-6xl items-center gap-10 px-5 py-10 lg:grid-cols-2 lg:px-10">
+        <section class="auth-intro">
+            <div class="auth-brand mb-8 inline-flex items-center gap-3">
+                <span class="auth-logo grid h-12 w-12 place-items-center rounded-2xl bg-blue-600 text-xl font-bold text-white">M</span>
+                <span class="font-semibold text-slate-700">MEVA Rajshahi Zone</span>
+            </div>
+            <p class="auth-eyebrow mb-3 text-sm font-semibold uppercase tracking-[0.2em] text-blue-700">POS & inventory</p>
+            <h1 class="auth-title max-w-xl text-4xl font-extrabold leading-tight text-slate-950 sm:text-5xl">আপনার ব্যবসা পরিচালনা করুন, এক জায়গায়।</h1>
+            <p class="mt-5 max-w-lg leading-7 text-slate-600">বিক্রয়, পণ্য, স্টক এবং আউটলেট পরিচালনার জন্য নিরাপদে সাইন ইন করুন। অনুমোদিত ব্যবহারকারীরা একই ডেটা শেয়ার করবেন।</p>
+            <div class="mt-8 grid max-w-lg gap-3 sm:grid-cols-3">
+                <div class="auth-feature rounded-xl border border-slate-200 bg-white p-4"><strong class="block text-slate-900">বিক্রয়</strong><span class="text-sm text-slate-500">POS ও রসিদ</span></div>
+                <div class="auth-feature rounded-xl border border-slate-200 bg-white p-4"><strong class="block text-slate-900">ইনভেন্টরি</strong><span class="text-sm text-slate-500">পণ্য ও স্টক</span></div>
+                <div class="auth-feature rounded-xl border border-slate-200 bg-white p-4"><strong class="block text-slate-900">আউটলেট</strong><span class="text-sm text-slate-500">শাখা পরিচালনা</span></div>
+            </div>
+        </section>
+
+        <section class="auth-card mx-auto w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-xl shadow-slate-200/60 sm:p-8">
+            <h2 class="text-2xl font-bold text-slate-950">সাইন ইন</h2>
+            <p class="mt-1 text-sm text-slate-500">আপনার account দিয়ে প্রবেশ করুন</p>
+            <button id="googleSignIn" type="button" class="auth-google mt-6 flex w-full items-center justify-center gap-3 rounded-lg border border-slate-300 px-4 py-3 text-sm font-semibold hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50">
+                <span class="text-lg font-bold text-blue-600">G</span>
+                Google দিয়ে চালিয়ে যান
+            </button>
+            <div class="my-5 flex items-center gap-3 text-xs text-slate-400"><span class="h-px flex-1 bg-slate-200"></span>অথবা ইমেইল দিয়ে সাইন ইন<span class="h-px flex-1 bg-slate-200"></span></div>
+            <form id="emailSignInForm" class="space-y-4">
+                <label class="block text-sm font-medium text-slate-700">
+                    ইমেইল
+                    <input id="email" type="email" autocomplete="username" required class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                </label>
+                <label class="block text-sm font-medium text-slate-700">
+                    পাসওয়ার্ড
+                    <input id="password" type="password" autocomplete="current-password" required class="mt-1.5 w-full rounded-lg border border-slate-300 px-3 py-2.5 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100">
+                </label>
+                <div class="text-right">
+                    <button id="forgotPassword" type="button" class="text-sm font-semibold text-blue-700 hover:text-blue-900">পাসওয়ার্ড ভুলে গেছেন?</button>
+                </div>
+                <button id="emailSignIn" type="submit" class="auth-submit w-full rounded-lg bg-blue-600 px-4 py-3 font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50">ইমেইল দিয়ে সাইন ইন</button>
+            </form>
+            <p id="authMessage" role="status" aria-live="polite" class="mt-4 hidden rounded-lg px-3 py-2 text-sm"></p>
+            <p class="mt-6 border-t border-slate-100 pt-4 text-xs leading-5 text-slate-500">অ্যাকাউন্ট Firebase Authentication থেকে অনুমোদিত হতে হবে। প্রথমবার database চালু করতে admin account দিয়ে সাইন ইন করুন।</p>
+        </section>
+    </main>
+    <script>
+        const authMessage = document.getElementById('authMessage');
+        const emailForm = document.getElementById('emailSignInForm');
+        const googleButton = document.getElementById('googleSignIn');
+        const emailButton = document.getElementById('emailSignIn');
+
+        function showAuthMessage(message, isError = true) {
+            authMessage.textContent = message;
+            authMessage.className = `mt-4 rounded-lg px-3 py-2 text-sm ${isError ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'}`;
+        }
+
+        function authErrorMessage(error) {
+            const messages = {
+                'auth/invalid-credential': 'ইমেইল বা পাসওয়ার্ড সঠিক নয়।',
+                'auth/user-not-found': 'এই ইমেইলে কোনো account পাওয়া যায়নি।',
+                'auth/wrong-password': 'পাসওয়ার্ড সঠিক নয়।',
+                'auth/too-many-requests': 'অনেকবার চেষ্টা হয়েছে। পরে আবার চেষ্টা করুন।',
+                'auth/popup-closed-by-user': 'Google sign-in বন্ধ করা হয়েছে।'
+            };
+            return messages[error.code] || `সাইন ইন করা যায়নি: ${error.message}`;
+        }
+
+        function requireFirebase() {
+            if (!window.mevaFirebaseReady) {
+                showAuthMessage('Firebase config এখনো যোগ করা হয়নি। README-র Firebase setup সম্পন্ন করুন।');
+                return false;
+            }
+            return true;
+        }
+
+        emailForm.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            if (!requireFirebase()) return;
+            emailButton.disabled = true;
+            try {
+                await firebase.auth().signInWithEmailAndPassword(
+                    document.getElementById('email').value.trim(),
+                    document.getElementById('password').value
+                );
+                window.location.href = './mobile.html';
+            } catch (error) {
+                showAuthMessage(authErrorMessage(error));
+            } finally {
+                emailButton.disabled = false;
+            }
+        });
+
+        googleButton.addEventListener('click', async () => {
+            if (!requireFirebase()) return;
+            googleButton.disabled = true;
+            try {
+                const provider = new firebase.auth.GoogleAuthProvider();
+                await firebase.auth().signInWithPopup(provider);
+                window.location.href = './mobile.html';
+            } catch (error) {
+                showAuthMessage(authErrorMessage(error));
+            } finally {
+                googleButton.disabled = false;
+            }
+        });
+
+        document.getElementById('forgotPassword').addEventListener('click', async () => {
+            if (!requireFirebase()) return;
+            const email = document.getElementById('email').value.trim();
+            if (!email) {
+                showAuthMessage('আগে ইমেইল ঘরে আপনার account-এর ইমেইল লিখুন।');
+                document.getElementById('email').focus();
+                return;
+            }
+            try {
+                await firebase.auth().sendPasswordResetEmail(email);
+                showAuthMessage('পাসওয়ার্ড reset করার লিংক ইমেইলে পাঠানো হয়েছে।', false);
+            } catch (error) {
+                showAuthMessage(authErrorMessage(error));
+            }
+        });
+
+        if (window.mevaFirebaseReady) {
+            firebase.auth().onAuthStateChanged((user) => {
+                if (user) window.location.href = './mobile.html';
+            });
+        }
+    </script>
 </body>
 </html>
