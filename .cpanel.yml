@@ -1,5 +1,6 @@
 ---
 deployment:
   tasks:
-    - export DEPLOYPATH=/home/sapahare/public_html/mevarajshahi
-    - /bin/cp -R * $DEPLOYPATH
+    - export DEPLOYPATH=/home/sapahare/store.sapaharexpress.com
+    - /bin/mkdir -p $DEPLOYPATH
+    - /bin/cp -R index.php mobile.php index.html mobile.html style.css firebase-config.js .htaccess api $DEPLOYPATH

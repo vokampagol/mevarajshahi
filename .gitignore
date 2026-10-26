@@ -5,6 +5,12 @@ Thumbs.db
 # Editor
 .vscode/
 
+# Local app dependencies and secrets
+listing-ai/node_modules/
+listing-ai/dist/
+listing-ai/.env
+api/secrets.local.php
+
 # Local logs
 *.log
 
