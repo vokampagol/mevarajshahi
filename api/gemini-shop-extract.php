@@ -151,15 +151,35 @@ $payload = [
     ],
 ];
 
-try {
-    [$geminiStatus, $geminiResponse] = postJson(
-        'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key='
-            . rawurlencode((string) $config['gemini_api_key']),
-        $payload
-    );
-} catch (Throwable $error) {
-    error_log('Gemini visiting card extraction failed: ' . $error->getMessage());
-    respond(502, ['error' => 'Could not reach Gemini. Please retry.']);
+$geminiModels = ['gemini-3.8-flash', 'gemini-3.6-flash'];
+$geminiStatus = 0;
+$geminiResponse = [];
+$usedGeminiModel = '';
+foreach ($geminiModels as $index => $model) {
+    try {
+        [$geminiStatus, $geminiResponse] = postJson(
+            'https://generativelanguage.googleapis.com/v1beta/models/' . $model . ':generateContent?key='
+                . rawurlencode((string) $config['gemini_api_key']),
+            $payload
+        );
+    } catch (Throwable $error) {
+        error_log('Gemini visiting card extraction failed for ' . $model . ': ' . $error->getMessage());
+        respond(502, ['error' => 'Could not reach Gemini. Please retry.']);
+    }
+
+    $usedGeminiModel = $model;
+    if ($geminiStatus >= 200 && $geminiStatus < 300) {
+        break;
+    }
+
+    if (
+        in_array($geminiStatus, [500, 502, 503, 504], true)
+        && $index < count($geminiModels) - 1
+    ) {
+        error_log('Gemini model ' . $model . ' returned HTTP ' . $geminiStatus . '; trying fallback model.');
+        continue;
+    }
+    break;
 }
 
 if ($geminiStatus < 200 || $geminiStatus >= 300) {
@@ -174,7 +194,8 @@ if ($geminiStatus < 200 || $geminiStatus >= 300) {
         || str_contains($upstreamMessage, 'api key')
         || str_contains($upstreamMessage, 'api_key');
 
-    error_log('Gemini visiting card extraction returned HTTP ' . $geminiStatus . ' (' . $upstreamStatus . ').');
+    error_log('Gemini visiting card extraction failed for ' . $usedGeminiModel
+        . ' with HTTP ' . $geminiStatus . ' (' . $upstreamStatus . ').');
 
     if ($isKeyError || $geminiStatus === 403) {
         respond(502, [
@@ -190,7 +211,10 @@ if ($geminiStatus < 200 || $geminiStatus >= 300) {
                 ? 'Gemini rejected the request (HTTP 400). Check the selected file and server API configuration.'
                 : ($geminiStatus === 404
                     ? 'Gemini model or API endpoint was not found (HTTP 404). Check model availability for this API project.'
-                    : 'Gemini request failed (HTTP ' . $geminiStatus . '). Check cPanel error logs and retry.')),
+                    : (in_array($geminiStatus, [500, 502, 503, 504], true)
+                        ? 'Gemini is temporarily unavailable (HTTP ' . $geminiStatus
+                            . ') on the primary and fallback models. Wait briefly and try again.'
+                        : 'Gemini request failed (HTTP ' . $geminiStatus . '). Check cPanel error logs and retry.'))),
     ]);
 }
 
