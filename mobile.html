@@ -286,10 +286,10 @@
 
                     <section class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
                         <h3 class="mb-1 font-bold text-slate-800">Add buyer shop from visiting card</h3>
-                        <p class="mb-4 text-xs text-slate-500">AI category প্রস্তাব করবে; save করার আগে সব তথ্য edit করতে পারবেন।</p>
+                        <p class="mb-4 text-xs text-slate-500">Gemini কাজ না করলে browser OCR চেষ্টা করবে; পাওয়া তথ্য save করার আগে মিলিয়ে edit করুন।</p>
                         <div class="flex flex-wrap items-center gap-3">
                             <input id="buyerCardFile" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" class="max-w-full text-sm">
-                            <button id="scanBuyerCardButton" onclick="scanBuyerCard()" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Scan with Gemini</button>
+                            <button id="scanBuyerCardButton" onclick="scanBuyerCard()" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700">Scan visiting card</button>
                             <span id="buyerScanStatus" class="text-xs text-slate-500" role="status"></span>
                         </div>
                         <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -1192,6 +1192,135 @@
             document.getElementById('buyerName').scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
+        function loadBuyerScanScript(src) {
+            return new Promise((resolve, reject) => {
+                const existing = document.querySelector(`script[data-buyer-scan="${src}"]`);
+                if (existing?.dataset.loaded === 'true') {
+                    resolve();
+                    return;
+                }
+                if (existing) {
+                    existing.addEventListener('load', () => resolve(), { once: true });
+                    existing.addEventListener('error', () => reject(new Error('OCR library could not be loaded. Check your internet connection and retry.')), { once: true });
+                    return;
+                }
+                const script = document.createElement('script');
+                script.src = src;
+                script.async = true;
+                script.dataset.buyerScan = src;
+                script.onload = () => {
+                    script.dataset.loaded = 'true';
+                    resolve();
+                };
+                script.onerror = () => {
+                    script.remove();
+                    reject(new Error('OCR library could not be loaded. Check your internet connection and retry.'));
+                };
+                document.head.appendChild(script);
+            });
+        }
+
+        function extractBuyerFieldsFromOcr(text) {
+            const banglaDigits = '০১২৩৪৫৬৭৮৯';
+            const normalizedText = text.replace(/[০-৯]/g, (digit) => String(banglaDigits.indexOf(digit)));
+            const lines = normalizedText.split(/\r?\n/).map((line) => line.replace(/\s+/g, ' ').trim()).filter(Boolean);
+            const lowerText = text.toLowerCase();
+            const categoryTerms = [
+                ['Medicine', ['pharmacy', 'medicine', 'medical', 'drug', 'clinic', 'hospital', 'ফার্মেসি', 'ঔষধ', 'ওষুধ', 'মেডিকেল', 'হাসপাতাল']],
+                ['Mobile', ['mobile', 'cell phone', 'smartphone', 'telecom', 'মোবাইল', 'টেলিকম']],
+                ['Grocery', ['grocery', 'super shop', 'supermarket', 'departmental store', 'মুদি', 'গ্রোসারি', 'সুপার শপ']],
+                ['Food', ['restaurant', 'food', 'cafe', 'café', 'bakery', 'hotel', 'রেস্টুরেন্ট', 'খাবার', 'বেকারি']],
+                ['Dealer', ['dealer', 'distributor', 'wholesale', 'traders', 'trading', 'ডিলার', 'ডিস্ট্রিবিউটর', 'ট্রেডার্স']],
+            ];
+            const matchCategory = categoryTerms.find(([, words]) => words.some((word) => lowerText.includes(word)));
+            const nonTitle = /(?:phone|mobile|mob|tel|fax|email|e-mail|www\.|https?:|@|address|ঠিকানা|মোবাইল|ফোন)/i;
+            const title = lines.find((line) => /[A-Za-z\u0980-\u09FF]/.test(line) && !nonTitle.test(line)) || lines[0] || '';
+            const phones = [...normalizedText.matchAll(/(?:\+?\s?88\s?)?01[3-9](?:[\s().-]*\d){8}|(?:\+\d{1,3}[\s().-]*)?(?:\d[\s().-]*){9,14}\d/g)]
+                .map((match) => match[0].replace(/[^\d+]/g, '').trim())
+                .filter((phone) => phone.replace(/\D/g, '').length >= 10);
+            const labeled = (labels) => {
+                const expression = new RegExp(`(?:${labels})\\s*[:：-]?\\s*(.+)`, 'i');
+                for (let index = 0; index < lines.length; index += 1) {
+                    const match = lines[index].match(expression);
+                    if (match?.[1]) return match[1].trim();
+                    if (expression.test(lines[index]) && lines[index + 1]) return lines[index + 1];
+                }
+                return '';
+            };
+            const mapsLink = normalizedText.match(/https?:\/\/(?:maps\.app\.goo\.gl|goo\.gl\/maps|maps\.google\.[^\s]+)/i)?.[0] || '';
+            return {
+                title: title.slice(0, 120),
+                category: matchCategory?.[0] || 'Other',
+                area: labeled('area|location|city|এলাকা|শহর').slice(0, 120),
+                address: labeled('address|ঠিকানা').slice(0, 240),
+                phone: phones.slice(0, 3).join(', ').slice(0, 40),
+                whatsapp: /whatsapp|হোয়াটসঅ্যাপ/i.test(text) ? (phones[0] || '') : '',
+                price_range: '',
+                google_maps_link: mapsLink,
+            };
+        }
+
+        async function scanBuyerCardWithOcr(file, status) {
+            await loadBuyerScanScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js');
+            if (!window.Tesseract) throw new Error('OCR library is unavailable.');
+
+            let pdf = null;
+            if (file.type === 'application/pdf') {
+                await loadBuyerScanScript('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js');
+                if (!window.pdfjsLib) throw new Error('PDF reader could not be loaded.');
+                window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+                pdf = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+            }
+
+            const worker = await window.Tesseract.createWorker('eng+ben', 1, {
+                workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
+                corePath: 'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1/tesseract-core-simd-lstm.wasm.js',
+                langPath: 'https://tessdata.projectnaptha.com/4.0.0',
+                logger: (progress) => {
+                    if (progress.status === 'recognizing text') {
+                        status.textContent = `কার্ডের লেখা পড়া হচ্ছে… ${Math.round((progress.progress || 0) * 100)}%`;
+                    }
+                },
+            });
+
+            try {
+                const texts = [];
+                if (pdf) {
+                    for (let number = 1; number <= Math.min(pdf.numPages, 2); number += 1) {
+                        const page = await pdf.getPage(number);
+                        const baseViewport = page.getViewport({ scale: 1 });
+                        const scale = Math.min(2, 2200 / Math.max(baseViewport.width, baseViewport.height));
+                        const viewport = page.getViewport({ scale });
+                        const canvas = document.createElement('canvas');
+                        canvas.width = Math.ceil(viewport.width);
+                        canvas.height = Math.ceil(viewport.height);
+                        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+                        texts.push((await worker.recognize(canvas)).data.text);
+                    }
+                } else {
+                    texts.push((await worker.recognize(file)).data.text);
+                }
+                const extracted = extractBuyerFieldsFromOcr(texts.join('\n'));
+                if (!extracted.title && !extracted.phone && !extracted.area && !extracted.address) {
+                    throw new Error('কার্ডের লেখা পড়া যায়নি। পরিষ্কার ছবি দিয়ে আবার চেষ্টা করুন বা তথ্য হাতে লিখুন।');
+                }
+                return extracted;
+            } finally {
+                await worker.terminate();
+            }
+        }
+
+        function fillBuyerForm(result) {
+            document.getElementById('buyerName').value = result.title || '';
+            document.getElementById('buyerCategory').value = BUYER_CATEGORIES.includes(result.category) ? result.category : 'Other';
+            document.getElementById('buyerArea').value = result.area || '';
+            document.getElementById('buyerAddress').value = result.address || '';
+            document.getElementById('buyerPhone').value = result.phone || '';
+            document.getElementById('buyerWhatsapp').value = result.whatsapp || '';
+            document.getElementById('buyerPriceRange').value = result.price_range || '';
+            document.getElementById('buyerMapsLink').value = result.google_maps_link || '';
+        }
+
         async function scanBuyerCard() {
             if (!requireAdminAction('Scanning a buyer visiting card')) return;
             const fileInput = document.getElementById('buyerCardFile');
@@ -1212,12 +1341,13 @@
             }
 
             button.disabled = true;
-            status.textContent = 'Gemini card পড়ছে…';
+            status.textContent = 'Gemini দিয়ে কার্ড পড়ার চেষ্টা হচ্ছে…';
+            let response = null;
             try {
                 const token = await signedInUser.getIdToken();
                 const formData = new FormData();
                 formData.append('file', file);
-                const response = await fetch('./api/gemini-shop-extract.php', {
+                response = await fetch('./api/gemini-shop-extract.php', {
                     method: 'POST',
                     headers: { Authorization: `Bearer ${token}` },
                     body: formData
@@ -1225,19 +1355,25 @@
                 const result = await response.json();
                 if (!response.ok) throw new Error(result.error || `AI extraction failed (${response.status}).`);
 
-                document.getElementById('buyerName').value = result.title || '';
-                document.getElementById('buyerCategory').value = BUYER_CATEGORIES.includes(result.category) ? result.category : 'Other';
-                document.getElementById('buyerArea').value = result.area || '';
-                document.getElementById('buyerAddress').value = result.address || '';
-                document.getElementById('buyerPhone').value = result.phone || '';
-                document.getElementById('buyerWhatsapp').value = result.whatsapp || '';
-                document.getElementById('buyerPriceRange').value = result.price_range || '';
-                document.getElementById('buyerMapsLink').value = result.google_maps_link || '';
+                fillBuyerForm(result);
                 status.textContent = 'তথ্য এসেছে—review/edit করে Save buyer shop চাপুন।';
-            } catch (error) {
-                console.error('Visiting card extraction failed:', error);
-                status.textContent = `Scan failed: ${error.message}`;
-                alert(`Gemini scan failed: ${error.message}`);
+            } catch (geminiError) {
+                if (response && ![429, 500, 502, 503, 504].includes(response.status)) {
+                    console.error('Visiting card extraction failed:', geminiError);
+                    status.textContent = `Scan failed: ${geminiError.message}`;
+                    alert(`Card scan failed: ${geminiError.message}`);
+                    return;
+                }
+                console.warn('Gemini scan unavailable; using browser OCR fallback:', geminiError);
+                try {
+                    status.textContent = 'Gemini unavailable—browser OCR দিয়ে card পড়া হচ্ছে…';
+                    fillBuyerForm(await scanBuyerCardWithOcr(file, status));
+                    status.textContent = 'OCR দিয়ে তথ্য এসেছে—সব field review/edit করে Save buyer shop চাপুন।';
+                } catch (ocrError) {
+                    console.error('Visiting card scan and OCR fallback failed:', ocrError);
+                    status.textContent = `Scan failed: ${ocrError.message}`;
+                    alert(`Card scan failed: ${ocrError.message}`);
+                }
             } finally {
                 button.disabled = false;
             }
