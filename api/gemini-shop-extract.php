@@ -57,6 +57,8 @@ if (
     !is_array($config)
     || empty($config['gemini_api_key'])
     || empty($config['firebase_web_api_key'])
+    || str_starts_with((string) $config['gemini_api_key'], 'PASTE_')
+    || str_starts_with((string) $config['firebase_web_api_key'], 'PASTE_')
 ) {
     error_log('Gemini extraction requires GEMINI_API_KEY and FIREBASE_WEB_API_KEY on the web server.');
     respond(503, ['error' => 'AI scanning is not configured. Set GEMINI_API_KEY and FIREBASE_WEB_API_KEY on the server.']);
@@ -161,11 +163,34 @@ try {
 }
 
 if ($geminiStatus < 200 || $geminiStatus >= 300) {
-    error_log('Gemini returned HTTP ' . $geminiStatus . ' while extracting a visiting card.');
+    $upstreamError = $geminiResponse['error'] ?? [];
+    $upstreamStatus = is_array($upstreamError) && is_string($upstreamError['status'] ?? null)
+        ? strtoupper($upstreamError['status'])
+        : 'UNKNOWN';
+    $upstreamMessage = is_array($upstreamError) && is_string($upstreamError['message'] ?? null)
+        ? strtolower($upstreamError['message'])
+        : '';
+    $isKeyError = str_contains($upstreamStatus, 'API_KEY')
+        || str_contains($upstreamMessage, 'api key')
+        || str_contains($upstreamMessage, 'api_key');
+
+    error_log('Gemini visiting card extraction returned HTTP ' . $geminiStatus . ' (' . $upstreamStatus . ').');
+
+    if ($isKeyError || $geminiStatus === 403) {
+        respond(502, [
+            'error' => 'Gemini rejected the server API key (HTTP ' . $geminiStatus
+                . '). Check that the key is current, the Generative Language API is enabled, and key restrictions allow this server.',
+        ]);
+    }
+
     respond($geminiStatus === 429 ? 429 : 502, [
         'error' => $geminiStatus === 429
-            ? 'Gemini request limit reached. Please wait and retry.'
-            : 'Gemini could not process this card. Check the server API key and try again.',
+            ? 'Gemini quota or rate limit reached (HTTP 429). Check the API project quota and billing, then retry.'
+            : ($geminiStatus === 400
+                ? 'Gemini rejected the request (HTTP 400). Check the selected file and server API configuration.'
+                : ($geminiStatus === 404
+                    ? 'Gemini model or API endpoint was not found (HTTP 404). Check model availability for this API project.'
+                    : 'Gemini request failed (HTTP ' . $geminiStatus . '). Check cPanel error logs and retry.')),
     ]);
 }
 

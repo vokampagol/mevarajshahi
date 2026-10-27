@@ -9,6 +9,6 @@ if (!is_array($secrets)) {
 
 return array_merge($secrets, [
     'storage_bucket' => 'sapahar-xpress.firebasestorage.app',
-    'gemini_api_key' => getenv('GEMINI_API_KEY') ?: ($secrets['gemini_api_key'] ?? ''),
-    'firebase_web_api_key' => getenv('FIREBASE_WEB_API_KEY') ?: ($secrets['firebase_web_api_key'] ?? ''),
+    'gemini_api_key' => trim((string) (getenv('GEMINI_API_KEY') ?: ($secrets['gemini_api_key'] ?? ''))),
+    'firebase_web_api_key' => trim((string) (getenv('FIREBASE_WEB_API_KEY') ?: ($secrets['firebase_web_api_key'] ?? ''))),
 ]);
